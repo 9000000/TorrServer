@@ -15,11 +15,14 @@ require (
 	github.com/anacrolix/missinggo/v2 v2.10.0
 	github.com/anacrolix/publicip v0.3.1
 	github.com/anacrolix/torrent v1.59.1
+	github.com/cyruzin/golang-tmdb v1.9.2
 	github.com/dustin/go-humanize v1.0.1
+	github.com/essentialkaos/translit v2.0.3+incompatible
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-contrib/location v1.0.3
 	github.com/gin-gonic/gin v1.11.0
 	github.com/hanwen/go-fuse/v2 v2.9.0
+	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/kljensen/snowball v0.10.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pkg/errors v0.9.1
@@ -86,6 +89,7 @@ require (
 	github.com/goccy/go-yaml v1.19.0 // indirect
 	github.com/google/btree v1.1.3 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
@@ -109,4 +113,7 @@ require (
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
 	golang.org/x/tools v0.39.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+	olympos.io/encoding/edn v0.0.0-20201019073823-d3554ca0b0a3 // indirect
+	pkg.re/essentialkaos/check.v1 v1.2.0 // indirect
 )
