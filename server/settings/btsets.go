@@ -39,6 +39,7 @@ type BTSets struct {
 
 	// Rutor
 	EnableRutorSearch bool
+	RutorSearchAddr   string
 
 	// Torznab
 	EnableTorznabSearch bool

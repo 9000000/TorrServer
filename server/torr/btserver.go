@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"maps"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/anacrolix/publicip"
 	"github.com/anacrolix/torrent"
@@ -131,8 +133,26 @@ func (bt *BTServer) configure(ctx context.Context) {
 			log.Println("Set listen port", settings.BTsets.PeersListenPort)
 			bt.config.ListenPort = settings.BTsets.PeersListenPort
 		} else {
-			log.Println("Set listen port to random autoselect (0)")
-			bt.config.ListenPort = 0
+			for {
+				m := 0
+				a := 49152
+				b := 65535
+				rand.Seed(time.Now().UnixNano())
+				n := a + rand.Intn(b-a+1)
+				port := fmt.Sprintf(":%d", n)
+				l, err := net.Listen("tcp", port)
+				defer l.Close()
+				if err == nil {
+					bt.config.ListenPort = n
+					log.Println("Open peers listen port:", n)
+					m = 1
+				} else {
+					log.Println("Error:", err)
+				}
+				if m == 1 {
+					break
+				}
+			}
 		}
 	}
 

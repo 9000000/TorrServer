@@ -133,8 +133,8 @@ var Staticjsmain6784d183chunkjs []byte
 //go:embed pages/static/js/main.6784d183.chunk.js.map
 var Staticjsmain6784d183chunkjsmap []byte
 
-//go:embed pages/static/js/runtime-main.5ed86a79.js
-var Staticjsruntimemain5ed86a79js []byte
+//go:embed pages/static/js/runtime-main.68af93bb.js
+var Staticjsruntimemain68af93bbjs []byte
 
-//go:embed pages/static/js/runtime-main.5ed86a79.js.map
-var Staticjsruntimemain5ed86a79jsmap []byte
+//go:embed pages/static/js/runtime-main.68af93bb.js.map
+var Staticjsruntimemain68af93bbjsmap []byte

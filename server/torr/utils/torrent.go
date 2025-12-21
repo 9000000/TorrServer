@@ -2,13 +2,15 @@ package utils
 
 import (
 	"encoding/base32"
-	"io"
+	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"server/config"
 	"server/settings"
 
 	"github.com/anacrolix/torrent"
@@ -36,19 +38,12 @@ var defTrackers = []string{
 var loadedTrackers []string
 
 func GetTrackerFromFile() []string {
-	name := filepath.Join(settings.Path, "trackers.txt")
-	buf, err := os.ReadFile(name)
+	buf, err := config.ReadConfigParser("Trackers")
 	if err == nil {
-		list := strings.Split(string(buf), "\n")
-		var ret []string
-		for _, l := range list {
-			if strings.HasPrefix(l, "udp") || strings.HasPrefix(l, "http") {
-				ret = append(ret, l)
-			}
-		}
-		return ret
+		return buf
+	} else {
+		return nil
 	}
-	return nil
 }
 
 func GetDefTrackers() []string {
@@ -59,25 +54,102 @@ func GetDefTrackers() []string {
 	return loadedTrackers
 }
 
+func RemoveDuplicates[T string | int](tSlice []T) []T {
+	allKeys := make(map[T]bool)
+	list := []T{}
+	for _, item := range tSlice {
+		if _, value := allKeys[item]; !value {
+			allKeys[item] = true
+			list = append(list, item)
+		}
+	}
+	return list
+}
+
+func RemoveLine(a []string, i int) {
+	copy(a[i:], a[i+1:])
+	a[len(a)-1] = ""
+	a = a[:len(a)-1]
+}
+
+func Contains(a []string, x string) bool {
+	for _, n := range a {
+		if x == n {
+			return true
+		}
+	}
+	return false
+}
+
+func Find(a []string, x string) int {
+	for i, n := range a {
+		if x == n {
+			return i
+		}
+	}
+	return len(a)
+}
+
+var defaultUrl = []string{
+	"https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best_ip.txt",
+	//	"https://newtrackon.com/api/stable",
+	//	"https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/best.txt",
+}
+
 func loadNewTracker() {
 	if len(loadedTrackers) > 0 {
 		return
 	}
-	resp, err := http.Get("https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best_ip.txt")
-	if err == nil {
-		defer resp.Body.Close()
-		buf, err := io.ReadAll(resp.Body)
+	got, get := config.ReadConfigParser("Default_url")
+	if len(got) > 0 && get == nil {
+		defaultUrl = nil
+		defaultUrl = got
+	}
+	for _, a := range defaultUrl {
+		var resp, err = http.Get(a)
 		if err == nil {
-			arr := strings.Split(string(buf), "\n")
-			var ret []string
-			for _, s := range arr {
-				s = strings.TrimSpace(s)
-				if len(s) > 0 {
-					ret = append(ret, s)
+			buf, err := ioutil.ReadAll(resp.Body)
+			if err == nil {
+				arr := strings.Split(string(buf), "\n")
+				var ret []string
+				for _, s := range arr {
+					s = strings.TrimSpace(s)
+					if len(s) > 0 {
+						ret = append(ret, s)
+					}
+				}
+				loadedTrackers = append(loadedTrackers, ret...)
+			}
+		}
+	}
+	tr := GetTrackerFromFile()
+	if tr != nil {
+		loadedTrackers = append(loadedTrackers, tr...)
+	}
+	loadedTrackers = append(loadedTrackers, defTrackers...)
+	TrackersDel, back := config.ReadConfigParser("Blacklist_tracker")
+	if back == nil {
+		if len(TrackersDel) > 0 {
+			for _, a := range TrackersDel {
+				if Contains(loadedTrackers, a) {
+					i := Find(loadedTrackers, a)
+					RemoveLine(loadedTrackers, i)
 				}
 			}
-			loadedTrackers = append(ret, defTrackers...)
 		}
+	}
+	loadedTrackers = RemoveDuplicates(loadedTrackers)
+	path := filepath.Join(settings.Path, "trackers.tmp")
+	file, err := os.Create(path)
+	if err == nil {
+		defer file.Close()
+		for _, c := range loadedTrackers {
+			_, err := file.WriteString(c + "\n")
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+		fmt.Println("Trackers file done")
 	}
 }
 

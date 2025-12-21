@@ -20,6 +20,7 @@ export default {
   DisablePEX: false,
   DisableUpload: false,
   DownloadRateLimit: 0,
+  RutorSearchAddr: '',
   UploadRateLimit: 0,
   ConnectionsLimit: 25,
   PeersListenPort: 0,

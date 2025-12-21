@@ -52,7 +52,13 @@ OUTPUT="${ROOT}/dist/TorrServer"
 
 #### Build web
 echo "Build web"
+rm -fr web/build
+rm -fr web/node_modules
+cd web
 export NODE_OPTIONS=--openssl-legacy-provider
+npm install
+npx update-browserslist-db@latest
+cd ../
 $GOBIN run gen_web.go
 
 #### Update api docs
@@ -64,7 +70,7 @@ swag init -g web/server.go
 #### Build server
 echo "Build server"
 cd "${ROOT}/server" || exit 1
-$GOBIN clean -i -r -cache # --modcache
+$GOBIN clean -i -r -cache --modcache
 $GOBIN mod tidy
 
 BUILD_FLAGS="-ldflags=${LDFLAGS} -tags=nosqlite -trimpath"
@@ -80,12 +86,12 @@ for PLATFORM in "${PLATFORMS[@]}"; do
   set_gomips "$GOARCH"
   BIN_FILENAME="${OUTPUT}-${GOOS}-${GOARCH}${GOARM}"
   if [[ "${GOOS}" == "windows" ]]; then BIN_FILENAME="${BIN_FILENAME}.exe"; fi
-  CMD="GOOS=${GOOS} GOARCH=${GOARCH} ${GO_ARM} ${GO_MIPS} ${GOBIN} build ${BUILD_FLAGS} -o ${BIN_FILENAME} ./cmd"
+  CMD="GOOS=${GOOS} GOARCH=${GOARCH} ${GO_ARM} ${GO_MIPS} CGO_ENABLED=0 ${GOBIN} build ${BUILD_FLAGS} -o ${BIN_FILENAME} ./cmd"
   echo "${CMD}"
   eval "$CMD" || FAILURES="${FAILURES} ${GOOS}/${GOARCH}${GOARM}"
-#  CMD="../upx -q ${BIN_FILENAME}"; # upx --brute produce much smaller binaries
-#  echo "compress with ${CMD}"
-#  eval "$CMD"
+  CMD="../upx -q ${BIN_FILENAME}"; # upx --brute produce much smaller binaries
+  echo "compress with ${CMD}"
+  eval "$CMD"
 done
 
 #####################################
@@ -99,10 +105,9 @@ declare -a COMPILERS=(
   "amd64:x86_64-linux-android21-clang"
 )
 
-export NDK_VERSION="25.2.9519653" # 25.1.8937393
-#export NDK_TOOLCHAIN=${ANDROID_HOME}/ndk/${NDK_VERSION}/toolchains/llvm/prebuilt/darwin-x86_64
-#export NDK_TOOLCHAIN="${PWD}/../android-ndk-r25c/toolchains/llvm/prebuilt/linux-x86_64"
-export NDK_TOOLCHAIN=/Users/yourok/Projects/AndroidNDK
+export NDK_VERSION="27.2.12479018" # 27.2.12479018
+export NDK_TOOLCHAIN="${PWD}/../../../android-ndk-r27c/toolchains/llvm/prebuilt/linux-x86_64"
+
 GOOS=android
 
 for V in "${COMPILERS[@]}"; do
@@ -112,13 +117,25 @@ for V in "${COMPILERS[@]}"; do
   export CXX="$NDK_TOOLCHAIN/bin/$COMPILER++"
   set_goarm "$GOARCH"
   BIN_FILENAME="${OUTPUT}-${GOOS}-${GOARCH}${GOARM}"
+#  CMD="GOOS=${GOOS} GOARCH=${GOARCH} ${GO_ARM} CGO_ENABLED=1 ${GOBIN} build ${BUILD_FLAGS} -tags disable_libutp -o ${BIN_FILENAME} ./cmd"
   CMD="GOOS=${GOOS} GOARCH=${GOARCH} ${GO_ARM} CGO_ENABLED=1 ${GOBIN} build ${BUILD_FLAGS} -o ${BIN_FILENAME} ./cmd"
   echo "${CMD}"
   eval "${CMD}" || FAILURES="${FAILURES} ${GOOS}/${GOARCH}${GOARM}"
-#  CMD="../upx -q ${BIN_FILENAME}"; # upx --brute produce much smaller binaries
-#  echo "compress with ${CMD}"
-#  eval "$CMD"
+  CMD="../upx -q ${BIN_FILENAME}"; # upx --brute produce much smaller binaries
+  echo "compress with ${CMD}"
+  eval "$CMD"
 done
+
+#####################################
+### Windows build without GUI #######
+#####################################
+GOOS="windows"
+LDFLAGS="'-s -w -H=windowsgui'"
+BUILD_FLAGS="-ldflags=${LDFLAGS} -tags=nosqlite"
+BIN_FILENAME="${OUTPUT}-${GOOS}-amd64-nogui.exe"
+CMD="GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=0 ${GOBIN} build ${BUILD_FLAGS} -o ${BIN_FILENAME} ./cmd"
+echo "${CMD}"
+eval "$CMD" || FAILURES="${FAILURES} windows/amd64 NOGUI"
 
 # eval errors
 if [[ "${FAILURES}" != "" ]]; then
@@ -126,6 +143,3 @@ if [[ "${FAILURES}" != "" ]]; then
   echo "failed on: ${FAILURES}"
   exit 1
 fi
-
-cd "${ROOT}/docker/lite" || exit 1
-./makedocker.sh

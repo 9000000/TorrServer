@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	poster_tmdb "server/poster"
 	"strings"
 
 	"server/dlna"
@@ -122,6 +123,11 @@ func addTorrent(req torrReqJS, c *gin.Context) {
 			if tor.Title == "" {
 				tor.Title = tor.Name()
 			}
+		}
+
+		if tor.Poster == "" {
+			title := tor.Title
+			tor.Poster = poster_tmdb.GetPoster(title)
 		}
 
 		if req.SaveToDB {
