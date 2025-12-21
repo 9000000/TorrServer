@@ -10,6 +10,12 @@ import (
 	"server/log"
 )
 
+type TorznabConfig struct {
+	Host string
+	Key  string
+	Name string
+}
+
 type BTSets struct {
 	// Cache
 	CacheSize       int64 // in byte, def 64 MB
@@ -35,6 +41,10 @@ type BTSets struct {
 	EnableRutorSearch bool
 	RutorSearchAddr   string
 
+	// Torznab
+	EnableTorznabSearch bool
+	TorznabUrls         []TorznabConfig
+
 	// BT Config
 	EnableIPv6        bool
 	DisableTCP        bool
@@ -55,6 +65,9 @@ type BTSets struct {
 
 	// Reader
 	ResponsiveMode bool // enable Responsive reader (don't wait pieceComplete)
+
+	// FS
+	ShowFSActiveTorr bool
 }
 
 func (v *BTSets) String() string {
@@ -131,6 +144,8 @@ func SetDefaultConfig() {
 	sets.RetrackersMode = 1
 	sets.TorrentDisconnectTimeout = 30
 	sets.ReaderReadAHead = 95 // 95%
+	sets.ResponsiveMode = true
+	sets.ShowFSActiveTorr = true
 	BTsets = sets
 	if !ReadOnly {
 		buf, err := json.Marshal(BTsets)

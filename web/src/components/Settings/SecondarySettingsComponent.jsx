@@ -39,6 +39,8 @@ export default function SecondarySettingsComponent({ settings, inputForm }) {
     SslPort,
     SslCert,
     SslKey,
+    ShowFSActiveTorr,
+    // FUSEPath,
   } = settings || {}
 
   return (
@@ -270,6 +272,14 @@ export default function SecondarySettingsComponent({ settings, inputForm }) {
         fullWidth
       />
       <br />
+      <FormGroup>
+        <FormControlLabel
+          control={<Switch checked={ShowFSActiveTorr} onChange={inputForm} id='ShowFSActiveTorr' color='secondary' />}
+          label={t('SettingsDialog.ShowFSActiveTorr')}
+          labelPlacement='start'
+        />
+        <FormHelperText margin='none'>{t('SettingsDialog.ShowFSActiveTorrHint')}</FormHelperText>
+      </FormGroup>
     </SecondarySettingsContent>
   )
 }
