@@ -2,15 +2,15 @@
 
 PLATFORMS=(
   'linux/amd64'
+  'linux/386'
   'linux/arm64'
   'linux/arm7'
-  'linux/386'
 )
 
 type setopt >/dev/null 2>&1
 
 set_goarm() {
-  if [[ "$1" =~ arm([5,7]) ]]; then
+  if [[ "$1" =~ arm([5-7]) ]]; then
     GOARCH="arm"
     GOARM="${BASH_REMATCH[1]}"
     GO_ARM="GOARM=${GOARM}"
