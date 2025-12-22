@@ -3,9 +3,9 @@
     "Version": "1.1.77",
     "BuildDate": "05.08.2020",
     "Links": {
-        "linux-386": "https://github.com/YouROK/TorrServer/releases/download/1.1.77/TorrServer-linux-386",
-        "linux-amd64": "https://github.com/YouROK/TorrServer/releases/download/1.1.77/TorrServer-linux-amd64",
-        "linux-arm64": "https://github.com/YouROK/TorrServer/releases/download/1.1.77/TorrServer-linux-arm64",
-        "linux-arm7": "https://github.com/YouROK/TorrServer/releases/download/1.1.77/TorrServer-linux-arm7"
+        "linux-386": "https://github.com/9000000/TorrServer/releases/download/1.1.77/TorrServer-linux-386",
+        "linux-amd64": "https://github.com/9000000/TorrServer/releases/download/1.1.77/TorrServer-linux-amd64",
+        "linux-arm64": "https://github.com/9000000/TorrServer/releases/download/1.1.77/TorrServer-linux-arm64",
+        "linux-arm7": "https://github.com/9000000/TorrServer/releases/download/1.1.77/TorrServer-linux-arm7"
     }
 }
