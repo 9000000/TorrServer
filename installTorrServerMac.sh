@@ -8,14 +8,9 @@ function getLang() {
 }
 
 function checkArch() {
-  case $(uname -m) in
-    i386) architecture="386" ;;
-    i686) architecture="386" ;;
-    x86_64) architecture="amd64" ;;
-    arm64) architecture="arm64" ;;
-    aarch64) architecture="arm64" ;;
-    *) [[ $lang == "en" ]] && { echo ""; echo " Unsupported Arch. Can't continue."; exit 1; } || { echo ""; echo " Не поддерживаемая архитектура. Продолжение невозможно."; exit 1; } ;;
-  esac
+  echo ""
+  [[ $lang == "en" ]] && echo " Unsupported Arch (macOS builds no longer available). Can't continue." || echo " Не поддерживаемая архитектура (сборки для macOS больше не доступны). Продолжение невозможно."
+  exit 1
 }
 
 function getLatestRelease() {

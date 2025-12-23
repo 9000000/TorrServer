@@ -887,11 +887,9 @@ checkOS() {
 
 checkArch() {
   case $(uname -m) in
-    i386|i686) architecture="386" ;;
     x86_64) architecture="amd64" ;;
     aarch64) architecture="arm64" ;;
     armv7|armv7l) architecture="arm7" ;;
-    armv6|armv6l) architecture="arm5" ;;
     *)
       echo " $(msg unsupported_arch)"
       exit 1

@@ -55,9 +55,7 @@ allowing the cache size to be adjusted according to the system parameters and th
 
 Download the application for the required platform in the [releases](https://github.com/9000000/TorrServer/releases) page. After installation, open the link <http://127.0.0.1:8090> in the browser.
 
-#### Windows
 
-Run `TorrServer-windows-amd64.exe`.
 
 #### Linux
 
@@ -275,7 +273,7 @@ More info at <https://github.com/9000000/TorrServer/tree/master/web#readme>
 
 - Install [Golang](https://golang.org/doc/install) 1.20+
 - Go to the TorrServer source directory
-- Run build script under linux or macOS `build-all.sh`
+- Run build script under linux `build-all.sh`
 
 #### Web
 
@@ -283,9 +281,6 @@ More info at <https://github.com/9000000/TorrServer/tree/master/web#readme>
 - Go to the web directory
 - Run `NODE_OPTIONS=--openssl-legacy-provider yarn build`
 
-#### Android
-
-To build an Android server you will need the Android Toolchain.
 
 #### Swagger
 
