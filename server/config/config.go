@@ -1,9 +1,10 @@
 package config
 
 import (
-	"github.com/ilyakaznacheev/cleanenv"
 	"math/rand"
 	"time"
+
+	"github.com/ilyakaznacheev/cleanenv"
 )
 
 type ConfParser struct {
@@ -43,8 +44,10 @@ func RandApiKey() string {
 
 var cfg ConfParser
 
+const configPath = "/opt/torrserver/config.yml"
+
 func ReadConfigParser(vars string) ([]string, error) {
-	err := cleanenv.ReadConfig("config.yml", &cfg)
+	err := cleanenv.ReadConfig(configPath, &cfg)
 	if err == nil {
 		switch {
 		case vars == "Trackers":
@@ -59,7 +62,7 @@ func ReadConfigParser(vars string) ([]string, error) {
 }
 
 func ReadConfigParser2(vars string) string {
-	err := cleanenv.ReadConfig("config.yml", &cfg)
+	err := cleanenv.ReadConfig(configPath, &cfg)
 	if err == nil {
 		switch {
 		case vars == "Api_key":
