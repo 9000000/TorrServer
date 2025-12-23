@@ -55,7 +55,7 @@ func Stop() {
 	time.Sleep(time.Millisecond * 1500)
 }
 
-// http://releases.yourok.ru/torr/rutor.ls
+// http://releases.9000000.ru/torr/rutor.ls
 func updateDB() bool {
 	log.TLogln("Update rutor db")
 
@@ -75,7 +75,7 @@ func updateDB() bool {
 		return false
 	}
 
-	resp, err := http.Get("http://releases.yourok.ru/torr/rutor.ls")
+	resp, err := http.Get("http://releases.9000000.ru/torr/rutor.ls")
 	if err != nil {
 		log.TLogln("Error connect to rutor db:", err)
 		out.Close()
