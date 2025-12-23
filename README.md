@@ -55,9 +55,11 @@ allowing the cache size to be adjusted according to the system parameters and th
 
 Download the application for the required platform in the [releases](https://github.com/9000000/TorrServer/releases) page. After installation, open the link <http://127.0.0.1:8090> in the browser.
 
-#### Windows
+### Supported Platforms
 
-Run `TorrServer-windows-amd64.exe`.
+- `linux/amd64`
+- `linux/arm64`
+- `linux/arm7`
 
 #### Linux
 
@@ -136,25 +138,6 @@ curl -s https://raw.githubusercontent.com/9000000/TorrServer/master/installTorrS
 - `--silent` - Non-interactive mode with defaults
 - `--help` - Show help message
 
-#### macOS
-
-Run in Terminal.app
-
-```bash
-curl -s https://raw.githubusercontent.com/9000000/TorrServer/master/installTorrServerMac.sh -o installTorrserverMac.sh && chmod 755 installTorrServerMac.sh && bash ./installTorrServerMac.sh
-```
-
-Alternative install script for Intel Macs: <https://github.com/dancheskus/TorrServerMacInstaller>
-
-#### IOCage Plugin (Unofficial)
-
-On FreeBSD (TrueNAS/FreeNAS) you can use this plugin: <https://github.com/filka96/iocage-plugin-TorrServer>
-
-#### NAS Systems (Unofficial)
-
-- Several releases are available through this link: <https://github.com/vladlenas>
-- **Synology NAS** packages repo source: <https://grigi.lt>
-
 ### Server args
 
 - `--port PORT`, `-p PORT` - web server port (default 8090)
@@ -180,7 +163,7 @@ On FreeBSD (TrueNAS/FreeNAS) you can use this plugin: <https://github.com/filka9
 Example:
 
 ```bash
-TorrServer-darwin-arm64 [--port PORT] [--path PATH] [--logpath LOGPATH] [--weblogpath WEBLOGPATH] [--rdb] [--httpauth] [--dontkill] [--ui] [--torrentsdir TORRENTSDIR] [--torrentaddr TORRENTADDR] [--pubipv4 PUBIPV4] [--pubipv6 PUBIPV6] [--searchwa]
+TorrServer-linux-amd64 [--port PORT] [--path PATH] [--logpath LOGPATH] [--weblogpath WEBLOGPATH] [--rdb] [--httpauth] [--dontkill] [--ui] [--torrentsdir TORRENTSDIR] [--torrentaddr TORRENTADDR] [--pubipv4 PUBIPV4] [--pubipv6 PUBIPV6] [--searchwa]
 ```
 
 ### Running in Docker & Docker Compose
@@ -275,17 +258,13 @@ More info at <https://github.com/9000000/TorrServer/tree/master/web#readme>
 
 - Install [Golang](https://golang.org/doc/install) 1.20+
 - Go to the TorrServer source directory
-- Run build script under linux or macOS `build-all.sh`
+- Run build script under linux `build-all.sh`
 
 #### Web
 
 - Install **npm** and **yarn**
 - Go to the web directory
 - Run `NODE_OPTIONS=--openssl-legacy-provider yarn build`
-
-#### Android
-
-To build an Android server you will need the Android Toolchain.
 
 #### Swagger
 
@@ -338,12 +317,6 @@ local:127.0.0.1
 127.0.0.1
 # at the beginning of the line, comment
 ```
-
-## Donate
-
-- [YooMoney](https://yoomoney.ru/to/410013733697114/200)
-- [Boosty](https://boosty.to/9000000)
-- [TBank](https://www.tbank.ru/cf/742qEMhKhKn)
 
 ## Thanks to everyone who tested and helped
 
