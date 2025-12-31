@@ -3,7 +3,7 @@
 After starting the container, the latest server is downloaded from GitHub.\
 If you need update server to latest, repull container
 
-Source code: https://github.com/YouROK/TorrServer
+Source code: https://github.com/9000000/TorrServer
 
 --------
 
@@ -61,7 +61,7 @@ version: '3.6'
 services:
   torrserver:
     container_name: torrserver
-    image: ghcr.io/yourok/torrserver
+    image: ghcr.io/9000000/torrserver
     restart: unless-stopped
     environment:
       - TS_PORT=8090

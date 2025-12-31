@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -22,6 +23,12 @@ import (
 
 // Add atomic counter for concurrent streams
 var activeStreams int32
+
+// AutoPreloadSize is the minimum bytes to preload before streaming (2MB default)
+const AutoPreloadSize = 2 * 1024 * 1024
+
+// AutoPreloadTimeout is the maximum time to wait for auto preload
+const AutoPreloadTimeout = 15 * time.Second
 
 // type contextResponseWriter struct {
 // 	http.ResponseWriter
@@ -80,6 +87,15 @@ func (t *Torrent) Stream(fileID int, req *http.Request, resp http.ResponseWriter
 		http.Error(resp, err.Error(), http.StatusForbidden)
 		return err
 	}
+
+	// Auto preload before streaming to ensure data is available
+	if err := t.autoPreload(file, req); err != nil {
+		if sets.BTsets.EnableDebug {
+			log.Printf("[Stream] Auto preload warning: %v", err)
+		}
+		// Continue anyway, don't fail the stream
+	}
+
 	// Create reader with context for timeout
 	reader := t.NewReader(file)
 	if reader == nil {
@@ -167,4 +183,108 @@ func (t *Torrent) Stream(fileID int, req *http.Request, resp http.ResponseWriter
 // GetActiveStreams returns number of currently active streams
 func GetActiveStreams() int32 {
 	return atomic.LoadInt32(&activeStreams)
+}
+
+// autoPreload ensures minimum data is available before streaming
+// This prevents the "first request fails" issue by preloading initial pieces
+func (t *Torrent) autoPreload(file *torrent.File, req *http.Request) error {
+	if t.Stat == state.TorrentClosed {
+		return errors.New("torrent closed")
+	}
+
+	// Determine start position from Range header
+	startPos := int64(0)
+	if rangeHeader := req.Header.Get("Range"); rangeHeader != "" {
+		var start int64
+		if _, err := fmt.Sscanf(rangeHeader, "bytes=%d-", &start); err == nil {
+			startPos = start
+		}
+	}
+
+	// Calculate preload size - use smaller of AutoPreloadSize or remaining file
+	preloadSize := int64(AutoPreloadSize)
+	remaining := file.Length() - startPos
+	if preloadSize > remaining {
+		preloadSize = remaining
+	}
+	if preloadSize <= 0 {
+		return nil
+	}
+
+	// Check if we already have enough data cached
+	if t.cache != nil {
+		cached := t.cache.GetState().Filled
+		if cached >= preloadSize {
+			if sets.BTsets.EnableDebug {
+				log.Printf("[AutoPreload] Skipped - already cached %d bytes", cached)
+			}
+			return nil
+		}
+	}
+
+	if sets.BTsets.EnableDebug {
+		log.Printf("[AutoPreload] Starting preload of %d bytes from position %d", preloadSize, startPos)
+	}
+
+	// Create a temporary reader for preloading
+	reader := file.NewReader()
+	if reader == nil {
+		return errors.New("cannot create reader for preload")
+	}
+	defer reader.Close()
+
+	reader.SetResponsive()
+	reader.SetReadahead(preloadSize)
+
+	// Seek to start position if needed
+	if startPos > 0 {
+		if _, err := reader.Seek(startPos, io.SeekStart); err != nil {
+			return fmt.Errorf("seek error: %w", err)
+		}
+	}
+
+	// Read with timeout
+	done := make(chan error, 1)
+	go func() {
+		buf := make([]byte, 32*1024) // 32KB buffer
+		totalRead := int64(0)
+		for totalRead < preloadSize {
+			n, err := reader.Read(buf)
+			if err != nil {
+				if err == io.EOF {
+					done <- nil
+					return
+				}
+				done <- err
+				return
+			}
+			totalRead += int64(n)
+
+			// Check if torrent was closed
+			if t.Stat == state.TorrentClosed {
+				done <- errors.New("torrent closed during preload")
+				return
+			}
+		}
+		done <- nil
+	}()
+
+	// Wait for preload with timeout
+	select {
+	case err := <-done:
+		if err != nil {
+			return fmt.Errorf("preload read error: %w", err)
+		}
+		if sets.BTsets.EnableDebug {
+			log.Printf("[AutoPreload] Completed successfully")
+		}
+		return nil
+	case <-time.After(AutoPreloadTimeout):
+		if sets.BTsets.EnableDebug {
+			log.Printf("[AutoPreload] Timeout after %v, continuing anyway", AutoPreloadTimeout)
+		}
+		return nil // Don't fail on timeout, just continue
+	case <-req.Context().Done():
+		return req.Context().Err()
+	}
 }

@@ -1,31 +1,31 @@
 <p align="center" style="text-align: center">
-  <img src="https://github.com/YouROK/TorrServer/assets/144587546/53f7175a-cda4-4a06-86b6-2ac07582dcf1" width="33%"><br/>
+  <img src="https://github.com/9000000/TorrServer/assets/144587546/53f7175a-cda4-4a06-86b6-2ac07582dcf1" width="33%"><br/>
 </p>
 
 <p align="center">
   Simple and powerful tool for streaming torrents.
   <br/>
   <br/>
-  <a href="https://github.com/YouROK/TorrServer/blob/master/LICENSE">
-    <img alt="GitHub" src="https://img.shields.io/github/license/YouROK/TorrServer"/>
+  <a href="https://github.com/9000000/TorrServer/blob/master/LICENSE">
+    <img alt="GitHub" src="https://img.shields.io/github/license/9000000/TorrServer"/>
   </a>
-  <a href="https://goreportcard.com/report/github.com/YouROK/TorrServer">
-    <img src="https://goreportcard.com/badge/github.com/YouROK/TorrServer" />
+  <a href="https://goreportcard.com/report/github.com/9000000/TorrServer">
+    <img src="https://goreportcard.com/badge/github.com/9000000/TorrServer" />
   </a>
-  <a href="https://pkg.go.dev/github.com/YouROK/TorrServer">
-    <img src="https://pkg.go.dev/badge/github.com/YouROK/TorrServer.svg" alt="Go Reference"/>
+  <a href="https://pkg.go.dev/github.com/9000000/TorrServer">
+    <img src="https://pkg.go.dev/badge/github.com/9000000/TorrServer.svg" alt="Go Reference"/>
   </a>
-  <a href="https://github.com/YouROK/TorrServer/issues">
+  <a href="https://github.com/9000000/TorrServer/issues">
     <img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat" alt="CodeFactor" />
   </a>
-  <a href="https://github.com/YouROK/TorrServer/actions/workflows/docker_image.yml" rel="nofollow">
-    <img src="https://img.shields.io/github/actions/workflow/status/YouROK/TorrServer/docker_image.yml?logo=Github" alt="Build" />
+  <a href="https://github.com/9000000/TorrServer/actions/workflows/docker_image.yml" rel="nofollow">
+    <img src="https://img.shields.io/github/actions/workflow/status/9000000/TorrServer/docker_image.yml?logo=Github" alt="Build" />
   </a>
-  <a href="https://github.com/YouROK/TorrServer/releases" rel="nofollow">
-    <img alt="GitHub release (latest SemVer)" src="https://img.shields.io/github/v/release/YouROK/TorrServer?label=version"/>
+  <a href="https://github.com/9000000/TorrServer/releases" rel="nofollow">
+    <img alt="GitHub release (latest SemVer)" src="https://img.shields.io/github/v/release/9000000/TorrServer?label=version"/>
   </a>
-  <a href="https://github.com/YouROK/TorrServer/tags" rel="nofollow">
-    <img alt="GitHub tag (latest SemVer pre-release)" src="https://img.shields.io/github/v/tag/YouROK/TorrServer?include_prereleases&label=pre-release"/>
+  <a href="https://github.com/9000000/TorrServer/tags" rel="nofollow">
+    <img alt="GitHub tag (latest SemVer pre-release)" src="https://img.shields.io/github/v/tag/9000000/TorrServer?include_prereleases&label=pre-release"/>
   </a>
 </p>
 
@@ -37,7 +37,7 @@ allowing the cache size to be adjusted according to the system parameters and th
 
 ## AI Documentation
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/YouROK/TorrServer)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/9000000/TorrServer)
 
 ## Features
 
@@ -53,7 +53,7 @@ allowing the cache size to be adjusted according to the system parameters and th
 
 ### Installation
 
-Download the application for the required platform in the [releases](https://github.com/YouROK/TorrServer/releases) page. After installation, open the link <http://127.0.0.1:8090> in the browser.
+Download the application for the required platform in the [releases](https://github.com/9000000/TorrServer/releases) page. After installation, open the link <http://127.0.0.1:8090> in the browser.
 
 #### Windows
 
@@ -64,7 +64,7 @@ Run `TorrServer-windows-amd64.exe`.
 Run in console
 
 ```bash
-curl -s https://raw.githubusercontent.com/YouROK/TorrServer/master/installTorrServerLinux.sh | sudo bash
+curl -s https://raw.githubusercontent.com/9000000/TorrServer/master/installTorrServerLinux.sh | sudo bash
 ```
 
 The script supports interactive and non-interactive installation, configuration, updates, and removal. When running the script interactively, you can:
@@ -76,7 +76,7 @@ The script supports interactive and non-interactive installation, configuration,
 **Download first and set execute permissions:**
 
 ```bash
-curl -s https://raw.githubusercontent.com/YouROK/TorrServer/master/installTorrServerLinux.sh -o installTorrServerLinux.sh && chmod 755 installTorrServerLinux.sh
+curl -s https://raw.githubusercontent.com/9000000/TorrServer/master/installTorrServerLinux.sh -o installTorrServerLinux.sh && chmod 755 installTorrServerLinux.sh
 ```
 
 **Command-line examples:**
@@ -141,7 +141,7 @@ curl -s https://raw.githubusercontent.com/YouROK/TorrServer/master/installTorrSe
 Run in Terminal.app
 
 ```bash
-curl -s https://raw.githubusercontent.com/YouROK/TorrServer/master/installTorrServerMac.sh -o installTorrserverMac.sh && chmod 755 installTorrServerMac.sh && bash ./installTorrServerMac.sh
+curl -s https://raw.githubusercontent.com/9000000/TorrServer/master/installTorrServerMac.sh -o installTorrserverMac.sh && chmod 755 installTorrServerMac.sh && bash ./installTorrServerMac.sh
 ```
 
 Alternative install script for Intel Macs: <https://github.com/dancheskus/TorrServerMacInstaller>
@@ -195,13 +195,13 @@ TorrServer-darwin-arm64 [--port PORT] [--ip IP] [--path PATH] [--logpath LOGPATH
 Run in console
 
 ```bash
-docker run --rm -d --name torrserver -p 8090:8090 ghcr.io/yourok/torrserver:latest
+docker run --rm -d --name torrserver -p 8090:8090 ghcr.io/9000000/torrserver:latest
 ```
 
 For running in persistence mode, just mount volume to container by adding `-v ~/ts:/opt/ts`, where `~/ts` folder path is just example, but you could use it anyway... Result example command:
 
 ```bash
-docker run --rm -d --name torrserver -v ~/ts:/opt/ts -p 8090:8090 ghcr.io/yourok/torrserver:latest
+docker run --rm -d --name torrserver -v ~/ts:/opt/ts -p 8090:8090 ghcr.io/9000000/torrserver:latest
 ```
 
 #### Environments
@@ -219,7 +219,7 @@ docker run --rm -d --name torrserver -v ~/ts:/opt/ts -p 8090:8090 ghcr.io/yourok
 Example with full overrided command (on default values):
 
 ```bash
-docker run --rm -d -e TS_PORT=5665 -e TS_DONTKILL=1 -e TS_HTTPAUTH=1 -e TS_RDB=1 -e TS_CONF_PATH=/opt/ts/config -e TS_LOG_PATH=/opt/ts/log -e TS_TORR_DIR=/opt/ts/torrents -e TS_PROXYURL=socks5h://user:password@example.com:2080 -e TS_PROXYMODE=tracker --name torrserver -v ~/ts:/opt/ts -p 5665:5665 ghcr.io/yourok/torrserver:latest
+docker run --rm -d -e TS_PORT=5665 -e TS_DONTKILL=1 -e TS_HTTPAUTH=1 -e TS_RDB=1 -e TS_CONF_PATH=/opt/ts/config -e TS_LOG_PATH=/opt/ts/log -e TS_TORR_DIR=/opt/ts/torrents -e TS_PROXYURL=socks5h://user:password@example.com:2080 -e TS_PROXYMODE=tracker --name torrserver -v ~/ts:/opt/ts -p 5665:5665 ghcr.io/9000000/torrserver:latest
 ```
 
 #### Docker Compose
@@ -230,7 +230,7 @@ docker run --rm -d -e TS_PORT=5665 -e TS_DONTKILL=1 -e TS_HTTPAUTH=1 -e TS_RDB=1
 version: '3.3'
 services:
     torrserver:
-        image: ghcr.io/yourok/torrserver
+        image: ghcr.io/9000000/torrserver
         container_name: torrserver
         network_mode: host    # to allow DLNA feature
         environment:
@@ -276,7 +276,7 @@ To run the web server locally, just run
 yarn start
 ```
 
-More info at <https://github.com/YouROK/TorrServer/tree/master/web#readme>
+More info at <https://github.com/9000000/TorrServer/tree/master/web#readme>
 
 ### Build
 
