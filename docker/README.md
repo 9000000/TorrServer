@@ -51,7 +51,7 @@ docker run -p 8090:8090 \
 -e TS_PUBIPV4=publicIP \
 -e TS_PUBIPV6=publicIP \
 -e TS_SEARCHWA=true \
-yourok/torrserver
+9000000/torrserver
 ```
 
 --------

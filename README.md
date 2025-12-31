@@ -348,12 +348,6 @@ local:127.0.0.1
 # at the beginning of the line, comment
 ```
 
-## Donate
-
-- [YooMoney](https://yoomoney.ru/to/410013733697114/200)
-- [Boosty](https://boosty.to/yourok)
-- [TBank](https://www.tbank.ru/cf/742qEMhKhKn)
-
 ## Thanks to everyone who tested and helped
 
 - [anacrolix](https://github.com/anacrolix) Matt Joiner
