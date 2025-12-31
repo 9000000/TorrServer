@@ -1,4 +1,31 @@
-web/node_modules
-web/build
-web/dist
+# Git
+.git/
+.github/
+.gitignore
+
+# Node
+web/node_modules/
+web/build/
+web/.env
 web/.env_example
+
+# Build
+dist/
+bin/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Docs
+*.md
+!docker/README.md
+LICENSE
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

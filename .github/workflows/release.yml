@@ -33,9 +33,6 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Prepare upx
-        run: chmod +x upx
-
       - name: Build
         run: ./build-all.sh
 
