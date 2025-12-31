@@ -51,11 +51,15 @@ type Torrent struct {
 	BitRate         string
 
 	expiredTime time.Time
+	createdTime time.Time // Time when torrent was added
 
 	closed <-chan struct{}
 
 	progressTicker *time.Ticker
 }
+
+// AutoDeleteAfter is the duration after which torrents are automatically deleted (3 hours)
+const AutoDeleteAfter = 3 * time.Hour
 
 func NewTorrent(spec *torrent.TorrentSpec, bt *BTServer) (*Torrent, error) {
 	// https://github.com/anacrolix/torrent/issues/747
@@ -101,6 +105,7 @@ func NewTorrent(spec *torrent.TorrentSpec, bt *BTServer) (*Torrent, error) {
 	torr.TorrentSpec = spec
 	torr.AddExpiredTime(timeout)
 	torr.Timestamp = time.Now().Unix()
+	torr.createdTime = time.Now() // Set creation time for auto-delete
 
 	go torr.watch()
 
@@ -181,6 +186,16 @@ func (t *Torrent) progressEvent() {
 		return
 	}
 
+	// Auto-delete torrent after 3 hours
+	if t.shouldAutoDelete() {
+		if t.TorrentSpec != nil {
+			log.TLogln("Torrent auto-deleted after 3 hours", t.TorrentSpec.InfoHash.HexString())
+		}
+		t.bt.RemoveTorrent(t.Hash())
+		RemTorrentDB(t.Hash()) // Also remove from database
+		return
+	}
+
 	t.muTorrent.Lock()
 	if t.Torrent != nil && t.Torrent.Info() != nil {
 		st := t.Torrent.Stats()
@@ -227,6 +242,14 @@ func (t *Torrent) updateRA() {
 
 func (t *Torrent) expired() bool {
 	return t.cache.Readers() == 0 && t.expiredTime.Before(time.Now()) && (t.Stat == state.TorrentWorking || t.Stat == state.TorrentClosed)
+}
+
+// shouldAutoDelete checks if torrent should be auto-deleted after 3 hours
+func (t *Torrent) shouldAutoDelete() bool {
+	if t.createdTime.IsZero() {
+		return false
+	}
+	return time.Since(t.createdTime) >= AutoDeleteAfter
 }
 
 func (t *Torrent) Files() []*torrent.File {

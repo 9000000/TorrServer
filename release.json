@@ -1,9 +1,9 @@
 {
     "Name": "TorrServer",
-    "Version": "1.1.77",
-    "BuildDate": "05.08.2020",
+    "Version": "MatriX.137.1",
+    "BuildDate": "31.12.2024",
     "Links": {
-        "linux-amd64": "https://github.com/9000000/TorrServer/releases/download/1.1.77/TorrServer-linux-amd64",
-        "linux-arm64": "https://github.com/9000000/TorrServer/releases/download/1.1.77/TorrServer-linux-arm64"
+        "linux-amd64": "https://github.com/9000000/TorrServer/releases/download/MatriX.137.1/TorrServer-linux-amd64",
+        "linux-arm64": "https://github.com/9000000/TorrServer/releases/download/MatriX.137.1/TorrServer-linux-arm64"
     }
 }

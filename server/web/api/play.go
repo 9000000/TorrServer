@@ -66,10 +66,13 @@ func play(c *gin.Context) {
 		return
 	}
 
-	// find file
+	// find file - auto select largest file if index not specified
 	index := -1
 	if len(tor.Files()) == 1 {
 		index = 1
+	} else if indexStr == "" || indexStr == "0" {
+		// Auto select largest file (usually the main video)
+		index = findLargestFileIndex(tor)
 	} else {
 		ind, err := strconv.Atoi(indexStr)
 		if err == nil {

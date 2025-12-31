@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"net/url"
+	"regexp"
 	"server/log"
 	"server/torrshash"
 	"strconv"
@@ -17,6 +18,78 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 )
+
+// findLargestFileIndex returns the index of the largest file in torrent
+// Returns -1 if it looks like a series (multiple large video files or episode patterns)
+func findLargestFileIndex(tor *torr.Torrent) int {
+	files := tor.Files()
+	if len(files) == 0 {
+		return -1
+	}
+
+	status := tor.Status()
+
+	// Video extensions
+	videoExtensions := []string{".mkv", ".mp4", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4v"}
+
+	// Episode patterns (case insensitive)
+	episodePatterns := []string{
+		`s\d+e\d+`,             // S01E01, S1E1
+		`season[\.\-_ ]?\d+`,   // Season 1, Season.1
+		`episode[\.\-_ ]?\d+`,  // Episode 1, Episode.1
+		`ep[\.\-_ ]?\d+`,       // Ep 1, Ep.1, Ep01
+		`[\.\-_ ]e\d+[\.\-_ ]`, // .E01., -E1-
+		`\d+x\d+`,              // 1x01, 2x05
+		`part[\.\-_ ]?\d+`,     // Part 1, Part.1
+		`vol[\.\-_ ]?\d+`,      // Vol 1, Vol.1
+		`tap[\.\-_ ]?\d+`,      // Tap 1 (Vietnamese)
+	}
+
+	largeVideoCount := 0
+	hasEpisodePattern := false
+	largestIndex := 1
+	var largestSize int64 = 0
+
+	for _, fs := range status.FileStats {
+		lowerPath := strings.ToLower(fs.Path)
+
+		// Check if video file
+		isVideo := false
+		for _, ext := range videoExtensions {
+			if strings.HasSuffix(lowerPath, ext) {
+				isVideo = true
+				break
+			}
+		}
+
+		if isVideo {
+			// Count large video files (>100MB)
+			if fs.Length > 100*1024*1024 {
+				largeVideoCount++
+			}
+
+			// Check for episode patterns
+			for _, pattern := range episodePatterns {
+				if matched, _ := regexp.MatchString(pattern, lowerPath); matched {
+					hasEpisodePattern = true
+					break
+				}
+			}
+		}
+
+		if fs.Length > largestSize {
+			largestSize = fs.Length
+			largestIndex = fs.Id
+		}
+	}
+
+	// If has episode pattern or multiple large video files, it's a series
+	if hasEpisodePattern || largeVideoCount > 1 {
+		return -1
+	}
+
+	return largestIndex
+}
 
 // get stat
 // http://127.0.0.1:8090/stream/fname?link=...&stat
@@ -148,10 +221,13 @@ func stream(c *gin.Context) {
 		c.Status(200) // only set status, not return
 	}
 
-	// find file
+	// find file - auto select largest file if index not specified
 	index := -1
 	if len(tor.Files()) == 1 {
 		index = 1
+	} else if indexStr == "" {
+		// Auto select largest file (usually the main video)
+		index = findLargestFileIndex(tor)
 	} else {
 		ind, err := strconv.Atoi(indexStr)
 		if err == nil {
@@ -273,10 +349,13 @@ func streamNoAuth(c *gin.Context) {
 		return
 	}
 
-	// find file
+	// find file - auto select largest file if index not specified
 	index := -1
 	if len(tor.Files()) == 1 {
 		index = 1
+	} else if indexStr == "" {
+		// Auto select largest file (usually the main video)
+		index = findLargestFileIndex(tor)
 	} else {
 		ind, err := strconv.Atoi(indexStr)
 		if err == nil {
