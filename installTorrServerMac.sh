@@ -19,7 +19,7 @@ function checkArch() {
 }
 
 function getLatestRelease() {
-  curl -s "https://api.github.com/repos/YouROK/TorrServer/releases" |
+  curl -s "https://api.github.com/repos/9000000/TorrServer/releases" |
   grep -iE '"tag_name":|"version":' |
   sed -E 's/.*"([^"]+)".*/\1/' |
   head -1
@@ -82,7 +82,7 @@ function installTorrServer() {
   user=$(whoami)
   binName="TorrServer-darwin-${architecture}"
   [[ ! -d "$dirInstall" ]] && mkdir -p ${dirInstall} && chmod a+rw ${dirInstall}
-  urlBin="https://github.com/YouROK/TorrServer/releases/download/$(getLatestRelease)/${binName}"
+  urlBin="https://github.com/9000000/TorrServer/releases/download/$(getLatestRelease)/${binName}"
   if [[ ! -f "$dirInstall/$binName" ]] | [[ ! -x "$dirInstall/$binName" ]] || [[ $(stat -c%s "$dirInstall/$binName" 2>/dev/null) -eq 0 ]]; then
     curl -L --progress-bar -# -o "$dirInstall/$binName" "$urlBin"
     chmod a+rx "$dirInstall/$binName"
