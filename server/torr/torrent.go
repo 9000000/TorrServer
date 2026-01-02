@@ -2,9 +2,11 @@ package torr
 
 import (
 	"errors"
+	"path/filepath"
 	"server/torrshash"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -231,8 +233,13 @@ func (t *Torrent) updateRA() {
 
 func (t *Torrent) expired() bool {
 	// Auto-delete after 3 hours regardless of activity
-	if time.Since(t.createdAt) > 3*time.Hour {
+	// Check if createdAt is not zero value (was initialized)
+	if !t.createdAt.IsZero() && time.Since(t.createdAt) > 3*time.Hour {
 		return true
+	}
+	// Check cache is not nil before accessing Readers()
+	if t.cache == nil {
+		return false
 	}
 	return t.cache.Readers() == 0 && t.expiredTime.Before(time.Now()) && (t.Stat == state.TorrentWorking || t.Stat == state.TorrentClosed)
 }
@@ -324,6 +331,18 @@ func (t *Torrent) Status() *state.TorrentStatus {
 	st.BitRate = t.BitRate
 	st.DurationSeconds = t.DurationSeconds
 
+	// Set CreatedAt and calculate time until auto-delete (3 hours)
+	if !t.createdAt.IsZero() {
+		st.CreatedAt = t.createdAt.Unix()
+		elapsed := time.Since(t.createdAt)
+		threeHours := 3 * time.Hour
+		if elapsed < threeHours {
+			st.TimeUntilDelete = int64((threeHours - elapsed).Seconds())
+		} else {
+			st.TimeUntilDelete = 0 // Already expired
+		}
+	}
+
 	if t.TorrentSpec != nil {
 		st.Hash = t.TorrentSpec.InfoHash.HexString()
 	}
@@ -362,13 +381,31 @@ func (t *Torrent) Status() *state.TorrentStatus {
 			sort.Slice(files, func(i, j int) bool {
 				return utils2.CompareStrings(files[i].Path(), files[j].Path())
 			})
+
+			// Collect unique file extensions
+			extensionsMap := make(map[string]bool)
 			for i, f := range files {
 				st.FileStats = append(st.FileStats, &state.TorrentFileStat{
 					Id:     i + 1, // in web id 0 is undefined
 					Path:   f.Path(),
 					Length: f.Length(),
 				})
+				// Extract file extension
+				path := f.Path()
+				ext := filepath.Ext(path)
+				if len(ext) > 0 {
+					ext = strings.ToUpper(ext[1:]) // Remove dot and convert to uppercase
+					if ext != "" {
+						extensionsMap[ext] = true
+					}
+				}
 			}
+
+			// Convert map to sorted slice
+			for ext := range extensionsMap {
+				st.FileExtensions = append(st.FileExtensions, ext)
+			}
+			sort.Strings(st.FileExtensions)
 
 			th := torrshash.New(st.Hash)
 			th.AddField(torrshash.TagTitle, st.Title)

@@ -1,4 +1,4 @@
-import { forwardRef, memo, useState } from 'react'
+import { forwardRef, memo, useState, useEffect } from 'react'
 import {
   UnfoldMore as UnfoldMoreIcon,
   PlayArrow as PlayArrowIcon,
@@ -58,6 +58,8 @@ const Torrent = ({ torrent }) => {
     hash,
     stat,
     data,
+    time_until_delete: timeUntilDelete,
+    file_extensions: fileExtensions,
   } = torrent
 
   const dropTorrent = () => axios.post(torrentsHost(), { action: 'drop', hash })
@@ -100,6 +102,40 @@ const Torrent = ({ torrent }) => {
     // Find a file with the same base name and a subtitle extension
     const captionFile = fileList.find(file => file.path.startsWith(baseName) && /\.(srt|vtt)$/i.test(file.path))
     return captionFile ? getFileLink(captionFile.path, captionFile.id) : ''
+  }
+
+  // Countdown timer for auto-delete
+  const [timeLeft, setTimeLeft] = useState(timeUntilDelete || 0)
+  
+  useEffect(() => {
+    if (!timeUntilDelete || timeUntilDelete <= 0) {
+      setTimeLeft(0)
+      return
+    }
+    
+    setTimeLeft(timeUntilDelete)
+    const interval = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(interval)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    
+    return () => clearInterval(interval)
+  }, [timeUntilDelete])
+
+  const formatCountdown = seconds => {
+    if (!seconds || seconds <= 0) return '---'
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    }
+    return `${minutes}:${secs.toString().padStart(2, '0')}`
   }
   return (
     <>
@@ -171,6 +207,20 @@ const Torrent = ({ torrent }) => {
               <div className='description-section-name'>{t('Peers')}</div>
               <div className='description-statistics-element-value'>{getPeerString(torrent) || '---'}</div>
             </div>
+
+            {timeUntilDelete > 0 && (
+              <div className='description-statistics-element-wrapper'>
+                <div className='description-section-name'>{t('AutoDelete')}</div>
+                <div className='description-statistics-element-value'>{formatCountdown(timeLeft)}</div>
+              </div>
+            )}
+
+            {fileExtensions && fileExtensions.length > 0 && (
+              <div className='description-statistics-element-wrapper'>
+                <div className='description-section-name'>{t('Format')}</div>
+                <div className='description-statistics-element-value'>{fileExtensions.join(', ')}</div>
+              </div>
+            )}
           </div>
         </TorrentCardDescription>
       </TorrentCard>
