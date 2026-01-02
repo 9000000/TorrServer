@@ -100,6 +100,8 @@ declare -A MSG_EN=(
   [have_latest]="You have latest TorrServer %s"
   [update_found]="TorrServer update found!"
   [will_install]="Will install TorrServer version %s"
+  [update_complete]="TorrServer updated successfully to %s"
+  [update_failed]="Failed to update TorrServer"
 
   # Installation
   [installing_packages]="Installing missing packages…"
@@ -227,6 +229,8 @@ declare -A MSG_RU=(
   [have_latest]="Установлен TorrServer последней версии %s"
   [update_found]="Доступно обновление сервера"
   [will_install]="Будет установлена версия TorrServer %s"
+  [update_complete]="TorrServer успешно обновлен до версии %s"
+  [update_failed]="Не удалось обновить TorrServer"
 
   # Installation
   [installing_packages]="Устанавливаем недостающие пакеты…"
@@ -1655,6 +1659,22 @@ updateTorrServerVersion() {
   # Clean up old backup after successful start (optional)
   if systemctlCmd --quiet is-active "$serviceName.service"; then
     rm -f "${dirInstall}/${binName}.old" 2>/dev/null || true
+    if [[ $SILENT_MODE -eq 0 ]]; then
+      echo ""
+      echo " - $(colorize green "$(msg update_complete "$target_version")")"
+      echo ""
+    else
+      printf "%s\n" "$(msg update_complete "$target_version")"
+    fi
+  else
+    if [[ $SILENT_MODE -eq 0 ]]; then
+      echo " - $(colorize yellow "$(msg update_failed)")"
+      echo " - $(colorize yellow "$(msg service_start_failed)")"
+    else
+      printf "%s\n" "$(msg update_failed)"
+      printf "%s\n" "$(msg service_start_failed)"
+    fi
+    return 1
   fi
 
   return 0
