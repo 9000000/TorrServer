@@ -459,10 +459,18 @@ func (t *Torrent) Status() *state.TorrentStatus {
 
 			// Smart Indexing (TV Series Mode)
 			if strings.Contains(strings.ToLower(st.Category), "tv") {
-				reSE := regexp.MustCompile(`(?i)S(\d+)E(\d+)`)
+				// Priority 1: "Season...Episode" structure (Folder/File) - e.g. "Season 12/Episode 01.mkv"
+				reSeasonEp := regexp.MustCompile(`(?i)Season\W*(\d+).*\WEpisode\W*(\d+)`)
+
+				// Priority 2: Standard S...E... (e.g. S12E01)
+				reSE := regexp.MustCompile(`(?i)\bS(\d+)(?:[^0-9E]+)?E(\d+)\b`)
+
+				// Priority 3: X notation (e.g. 12x01)
+				reX := regexp.MustCompile(`(?i)\b(\d+)x(\d+)\b`)
 
 				parseID := func(s string) int {
-					matches := reSE.FindStringSubmatch(s)
+					// Try Season/Episode full words first (often in folder names)
+					matches := reSeasonEp.FindStringSubmatch(s)
 					if len(matches) == 3 {
 						season, _ := strconv.Atoi(matches[1])
 						episode, _ := strconv.Atoi(matches[2])
@@ -470,6 +478,27 @@ func (t *Torrent) Status() *state.TorrentStatus {
 							return season*100 + episode
 						}
 					}
+
+					// Try S...E...
+					matches = reSE.FindStringSubmatch(s)
+					if len(matches) == 3 {
+						season, _ := strconv.Atoi(matches[1])
+						episode, _ := strconv.Atoi(matches[2])
+						if season > 0 && episode > 0 {
+							return season*100 + episode
+						}
+					}
+
+					// Try 12x01
+					matches = reX.FindStringSubmatch(s)
+					if len(matches) == 3 {
+						season, _ := strconv.Atoi(matches[1])
+						episode, _ := strconv.Atoi(matches[2])
+						if season > 0 && episode > 0 {
+							return season*100 + episode
+						}
+					}
+
 					return 0
 				}
 
