@@ -409,6 +409,40 @@ func (t *Torrent) Status() *state.TorrentStatus {
 				return utils2.CompareStrings(files[i].Path(), files[j].Path())
 			})
 
+			// Check for Smart Indexing (Movie Mode)
+			// Trigger if Category is explicitly "movie"
+			// OR if the largest file dominates the torrent (> 85% of total size), implying it's the main movie file.
+			if len(files) > 1 {
+				totalSize := int64(0)
+				maxSize := int64(0)
+				maxIndex := -1
+
+				for i, f := range files {
+					fLen := f.Length()
+					totalSize += fLen
+					if fLen > maxSize {
+						maxSize = fLen
+						maxIndex = i
+					}
+				}
+
+				isMovie := st.Category == "movie"
+				if !isMovie && totalSize > 0 {
+					// Heuristic: If largest file is > 85% of total size
+					if float64(maxSize) > float64(totalSize)*0.85 {
+						isMovie = true
+					}
+				}
+
+				if isMovie && maxIndex > 0 {
+					largest := files[maxIndex]
+					// remove from current position
+					files = append(files[:maxIndex], files[maxIndex+1:]...)
+					// prepend
+					files = append([]*torrent.File{largest}, files...)
+				}
+			}
+
 			// Collect unique file extensions
 			extensionsMap := make(map[string]bool)
 			for i, f := range files {
