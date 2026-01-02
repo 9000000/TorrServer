@@ -36,6 +36,19 @@ jobs:
       - name: Prepare upx
         run: chmod +x upx
 
+      - name: Update version in version.go
+        run: |
+          VERSION="${{ github.event.inputs.tag_name || github.ref_name }}"
+          # Remove 'v' prefix if present and convert to MatriX format
+          VERSION="${VERSION#v}"
+          # Handle MatriX prefix if not present
+          if [[ ! "$VERSION" =~ ^MatriX ]]; then
+            VERSION="MatriX.${VERSION}"
+          fi
+          echo "Setting version to: $VERSION"
+          sed -i "s/const Version = \".*\"/const Version = \"$VERSION\"/" server/version/version.go
+          cat server/version/version.go
+
       - name: Build
         run: ./build-all.sh
 
