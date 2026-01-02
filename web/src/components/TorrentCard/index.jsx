@@ -106,13 +106,13 @@ const Torrent = ({ torrent }) => {
 
   // Countdown timer for auto-delete
   const [timeLeft, setTimeLeft] = useState(timeUntilDelete || 0)
-  
+
   useEffect(() => {
     if (!timeUntilDelete || timeUntilDelete <= 0) {
       setTimeLeft(0)
       return
     }
-    
+
     setTimeLeft(timeUntilDelete)
     const interval = setInterval(() => {
       setTimeLeft(prev => {
@@ -123,7 +123,7 @@ const Torrent = ({ torrent }) => {
         return prev - 1
       })
     }, 1000)
-    
+
     return () => clearInterval(interval)
   }, [timeUntilDelete])
 
