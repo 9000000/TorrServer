@@ -1593,6 +1593,9 @@ updateTorrServerVersion() {
     :
   fi
 
+  # Wait a moment for service to fully stop
+  sleep 1
+
   local binName
   binName=$(getBinaryName)
   local urlBin
@@ -1602,7 +1605,37 @@ updateTorrServerVersion() {
     urlBin=$(buildDownloadUrl "$target_version" "$binName")
   fi
 
-  downloadBinary "$urlBin" "$dirInstall/$binName" "$target_version"
+  # Download to temporary file first
+  local temp_binary="${dirInstall}/${binName}.new"
+  downloadBinary "$urlBin" "$temp_binary" "$target_version"
+
+  # Verify downloaded file is not empty
+  if [[ ! -f "$temp_binary" ]] || [[ $(stat -c%s "$temp_binary" 2>/dev/null) -eq 0 ]]; then
+    if [[ $SILENT_MODE -eq 0 ]]; then
+      echo " - $(colorize red "ERROR: Downloaded binary is empty or missing")"
+    fi
+    rm -f "$temp_binary" 2>/dev/null || true
+    return 1
+  fi
+
+  # Backup old binary
+  if [[ -f "$dirInstall/$binName" ]]; then
+    mv "$dirInstall/$binName" "${dirInstall}/${binName}.old" 2>/dev/null || true
+  fi
+
+  # Move new binary to final location
+  mv "$temp_binary" "$dirInstall/$binName"
+  chmod +x "$dirInstall/$binName"
+
+  # Ensure correct ownership
+  local owner="$username"
+  local group
+  if [[ "$username" == "root" ]]; then
+    group="root"
+  else
+    group="$(id -gn "$username" 2>/dev/null || echo "$username")"
+  fi
+  chown "$owner":"$group" "$dirInstall/$binName" 2>/dev/null || true
 
   # Update service file to reflect user change
   if [[ -f "$dirInstall/$serviceName.service" ]]; then
@@ -1617,6 +1650,11 @@ updateTorrServerVersion() {
 
   if ! systemctlCmd start "$serviceName.service"; then
     :
+  fi
+
+  # Clean up old backup after successful start (optional)
+  if systemctlCmd --quiet is-active "$serviceName.service"; then
+    rm -f "${dirInstall}/${binName}.old" 2>/dev/null || true
   fi
 
   return 0
