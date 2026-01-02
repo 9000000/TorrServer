@@ -1,6 +1,7 @@
 package torr
 
 import (
+	"encoding/json"
 	"errors"
 	"path/filepath"
 	"server/torrshash"
@@ -345,6 +346,32 @@ func (t *Torrent) Status() *state.TorrentStatus {
 
 	if t.TorrentSpec != nil {
 		st.Hash = t.TorrentSpec.InfoHash.HexString()
+	}
+
+	// Extract FileExtensions from Data field for torrents in DB state
+	// This ensures extensions are shown even when torrent is not running
+	if t.Data != "" && len(st.FileExtensions) == 0 {
+		var tsFiles struct {
+			TorrServer struct {
+				Files []*state.TorrentFileStat `json:"Files"`
+			} `json:"TorrServer"`
+		}
+		if err := json.Unmarshal([]byte(t.Data), &tsFiles); err == nil {
+			extensionsMap := make(map[string]bool)
+			for _, f := range tsFiles.TorrServer.Files {
+				ext := filepath.Ext(f.Path)
+				if len(ext) > 0 {
+					ext = strings.ToUpper(ext[1:])
+					if ext != "" {
+						extensionsMap[ext] = true
+					}
+				}
+			}
+			for ext := range extensionsMap {
+				st.FileExtensions = append(st.FileExtensions, ext)
+			}
+			sort.Strings(st.FileExtensions)
+		}
 	}
 	if t.Torrent != nil {
 		st.Name = t.Torrent.Name()
