@@ -131,11 +131,7 @@ const Torrent = ({ torrent }) => {
     if (!seconds || seconds <= 0) return '---'
     const hours = Math.floor(seconds / 3600)
     const minutes = Math.floor((seconds % 3600) / 60)
-    const secs = seconds % 60
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-    }
-    return `${minutes}:${secs.toString().padStart(2, '0')}`
+    return `${hours}:${minutes.toString().padStart(2, '0')}`
   }
   return (
     <>
@@ -188,6 +184,20 @@ const Torrent = ({ torrent }) => {
           </div>
 
           <div className='description-statistics-wrapper'>
+            {timeUntilDelete > 0 && (
+              <div className='description-statistics-element-wrapper'>
+                <div className='description-section-name'>{t('AutoDelete')}</div>
+                <div className='description-statistics-element-value'>{formatCountdown(timeLeft)}</div>
+              </div>
+            )}
+
+            {fileExtensions && fileExtensions.length > 0 && (
+              <div className='description-statistics-element-wrapper'>
+                <div className='description-section-name'>{t('Format')}</div>
+                <div className='description-statistics-element-value'>{fileExtensions.join(', ')}</div>
+              </div>
+            )}
+
             <div className='description-statistics-element-wrapper'>
               <div className='description-section-name'>
                 <StatusIndicator stat={stat} />
@@ -207,20 +217,6 @@ const Torrent = ({ torrent }) => {
               <div className='description-section-name'>{t('Peers')}</div>
               <div className='description-statistics-element-value'>{getPeerString(torrent) || '---'}</div>
             </div>
-
-            {timeUntilDelete > 0 && (
-              <div className='description-statistics-element-wrapper'>
-                <div className='description-section-name'>{t('AutoDelete')}</div>
-                <div className='description-statistics-element-value'>{formatCountdown(timeLeft)}</div>
-              </div>
-            )}
-
-            {fileExtensions && fileExtensions.length > 0 && (
-              <div className='description-statistics-element-wrapper'>
-                <div className='description-section-name'>{t('Format')}</div>
-                <div className='description-statistics-element-value'>{fileExtensions.join(', ')}</div>
-              </div>
-            )}
           </div>
         </TorrentCardDescription>
       </TorrentCard>
