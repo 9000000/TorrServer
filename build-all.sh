@@ -81,5 +81,6 @@ if [[ "${FAILURES}" != "" ]]; then
   exit 1
 fi
 
-cd "${ROOT}/docker/lite" || exit 1
-./makedocker.sh
+# Docker build is optional and requires tag argument
+# cd "${ROOT}/docker/lite" || exit 1
+# ./makedocker.sh <version>
