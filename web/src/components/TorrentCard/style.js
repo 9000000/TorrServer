@@ -153,22 +153,10 @@ export const TorrentCardDescription = styled.div`
     }
 
     .description-statistics-wrapper {
-      display: grid;
-      grid-template-columns: 80px 80px 1fr;
+      display: flex;
+      flex-wrap: wrap;
       align-self: end;
-
-      @media (max-width: 1260px), (max-height: 500px) {
-        grid-template-columns: 70px 70px 1fr;
-      }
-
-      @media (max-width: 770px) {
-        grid-template-columns: 65px 65px 1fr;
-      }
-
-      @media (max-width: 700px) {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-      }
+      gap: 0 15px;
     }
 
     .description-statistics-element-wrapper {

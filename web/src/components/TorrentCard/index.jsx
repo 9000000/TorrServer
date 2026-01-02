@@ -184,12 +184,13 @@ const Torrent = ({ torrent }) => {
           </div>
 
           <div className='description-statistics-wrapper'>
-            {timeUntilDelete > 0 && (
-              <div className='description-statistics-element-wrapper'>
-                <div className='description-section-name'>{t('AutoDelete')}</div>
-                <div className='description-statistics-element-value'>{formatCountdown(timeLeft)}</div>
+            <div className='description-statistics-element-wrapper'>
+              <div className='description-section-name'>
+                <StatusIndicator stat={stat} />
+                {t('Size')}
               </div>
-            )}
+              <div className='description-statistics-element-value'>{torrentSize > 0 && humanizeSize(torrentSize)}</div>
+            </div>
 
             {fileExtensions && fileExtensions.length > 0 && (
               <div className='description-statistics-element-wrapper'>
@@ -198,13 +199,12 @@ const Torrent = ({ torrent }) => {
               </div>
             )}
 
-            <div className='description-statistics-element-wrapper'>
-              <div className='description-section-name'>
-                <StatusIndicator stat={stat} />
-                {t('Size')}
+            {timeUntilDelete > 0 && (
+              <div className='description-statistics-element-wrapper'>
+                <div className='description-section-name'>{t('AutoDelete')}</div>
+                <div className='description-statistics-element-value'>{formatCountdown(timeLeft)}</div>
               </div>
-              <div className='description-statistics-element-value'>{torrentSize > 0 && humanizeSize(torrentSize)}</div>
-            </div>
+            )}
 
             <div className='description-statistics-element-wrapper'>
               <div className='description-section-name'>{t('Speed')}</div>
