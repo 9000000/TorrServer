@@ -101,14 +101,10 @@ export const TorrentCardDescription = styled.div`
     background: ${cardSecondaryColor};
     border-radius: 5px;
     padding: 5px;
-    display: grid;
-    grid-template-rows: 55% 1fr;
-    gap: 10px;
-
-    @media (max-width: 770px) {
-      grid-template-rows: 60% 1fr;
-      gap: 3px;
-    }
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    overflow: hidden;
 
     .description-title-wrapper {
       display: flex;
