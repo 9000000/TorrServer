@@ -2,6 +2,7 @@ package torr
 
 import (
 	"encoding/json"
+	"time"
 
 	"server/settings"
 	"server/torr/state"
@@ -58,6 +59,13 @@ func GetTorrentDB(hash metainfo.Hash) *Torrent {
 			torr.Size = db.Size
 			torr.Data = db.Data
 			torr.Stat = state.TorrentInDB
+			// Initialize createdAt from Timestamp for auto-delete timer
+			// Use Timestamp if valid, otherwise use current time
+			if db.Timestamp > 0 {
+				torr.createdAt = time.Unix(db.Timestamp, 0)
+			} else {
+				torr.createdAt = time.Now()
+			}
 			return torr
 		}
 	}
@@ -81,6 +89,13 @@ func ListTorrentsDB() map[metainfo.Hash]*Torrent {
 		torr.Size = db.Size
 		torr.Data = db.Data
 		torr.Stat = state.TorrentInDB
+		// Initialize createdAt from Timestamp for auto-delete timer
+		// Use Timestamp if valid, otherwise use current time
+		if db.Timestamp > 0 {
+			torr.createdAt = time.Unix(db.Timestamp, 0)
+		} else {
+			torr.createdAt = time.Now()
+		}
 		ret[torr.TorrentSpec.InfoHash] = torr
 	}
 	return ret

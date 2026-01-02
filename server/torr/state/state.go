@@ -65,6 +65,9 @@ type TorrentStatus struct {
 	PiecesDirtiedBad    int64       `json:"pieces_dirtied_bad,omitempty"`
 	DurationSeconds     float64     `json:"duration_seconds,omitempty"`
 	BitRate             string      `json:"bit_rate,omitempty"`
+	CreatedAt           int64       `json:"created_at,omitempty"`           // Unix timestamp when torrent was created
+	TimeUntilDelete     int64       `json:"time_until_delete,omitempty"`    // Seconds until auto-delete (3 hours)
+	FileExtensions      []string    `json:"file_extensions,omitempty"`       // List of file extensions (e.g., MKV, MP4, ISO)
 
 	FileStats []*TorrentFileStat `json:"file_stats,omitempty"`
 }
