@@ -9,7 +9,7 @@ export const TorrentCard = styled.div`
     border-radius: 5px;
     display: grid;
     grid-template-columns: 120px 260px 1fr;
-    grid-template-rows: 180px;
+    grid-template-rows: minmax(180px, max-content);
     grid-template-areas: 'poster description buttons';
     gap: 10px;
     padding: 10px;

@@ -192,6 +192,18 @@ const Torrent = ({ torrent }) => {
               <div className='description-statistics-element-value'>{torrentSize > 0 && humanizeSize(torrentSize)}</div>
             </div>
 
+            <div className='description-statistics-element-wrapper'>
+              <div className='description-section-name'>{t('Speed')}</div>
+              <div className='description-statistics-element-value'>
+                {downloadSpeed > 0 ? humanizeSpeed(downloadSpeed) : '---'}
+              </div>
+            </div>
+
+            <div className='description-statistics-element-wrapper'>
+              <div className='description-section-name'>{t('Peers')}</div>
+              <div className='description-statistics-element-value'>{getPeerString(torrent) || '---'}</div>
+            </div>
+
             {fileExtensions && fileExtensions.length > 0 && (
               <div className='description-statistics-element-wrapper'>
                 <div className='description-section-name'>{t('Format')}</div>
@@ -205,18 +217,6 @@ const Torrent = ({ torrent }) => {
                 <div className='description-statistics-element-value'>{formatCountdown(timeLeft)}</div>
               </div>
             )}
-
-            <div className='description-statistics-element-wrapper'>
-              <div className='description-section-name'>{t('Speed')}</div>
-              <div className='description-statistics-element-value'>
-                {downloadSpeed > 0 ? humanizeSpeed(downloadSpeed) : '---'}
-              </div>
-            </div>
-
-            <div className='description-statistics-element-wrapper'>
-              <div className='description-section-name'>{t('Peers')}</div>
-              <div className='description-statistics-element-value'>{getPeerString(torrent) || '---'}</div>
-            </div>
           </div>
         </TorrentCardDescription>
       </TorrentCard>
