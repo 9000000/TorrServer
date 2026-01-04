@@ -84,7 +84,7 @@ func searchOne(host, key, query string) []*models.TorrentDetails {
 	q.Set("apikey", key)
 	q.Set("t", "search")
 	q.Set("q", query)
-	q.Set("cat", "5000,2000") // Movies and TV
+	q.Set("cat", "5000,2000,5070") // Movies, TV and Anime
 	u.RawQuery = q.Encode()
 
 	resp, err := http.Get(u.String())

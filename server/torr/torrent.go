@@ -458,7 +458,9 @@ func (t *Torrent) Status() *state.TorrentStatus {
 			}
 
 			// Smart Indexing (TV Series Mode)
-			if strings.Contains(strings.ToLower(st.Category), "tv") {
+			// Exclude "anime" to keep default indexing as requested
+			catLower := strings.ToLower(st.Category)
+			if strings.Contains(catLower, "tv") && !strings.Contains(catLower, "anime") {
 				// Priority 1: "Season...Episode" structure (Folder/File) - e.g. "Season 12/Episode 01.mkv"
 				reSeasonEp := regexp.MustCompile(`(?i)Season\W*(\d+).*\WEpisode\W*(\d+)`)
 
