@@ -77,9 +77,9 @@ export default function PrimarySettingsComponent({
           title={t('SettingsDialog.CacheSize')}
           value={cacheSize}
           setValue={setCacheSize}
-          sliderMin={32}
+          sliderMin={25}
           sliderMax={1024}
-          inputMin={32}
+          inputMin={25}
           inputMax={999999}
           step={4}
           onBlurCallback={value => setCacheSize(Math.round(value / 4) * 4)}
