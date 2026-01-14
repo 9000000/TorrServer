@@ -79,13 +79,28 @@ export default function SettingsDialog({ handleClose }) {
 
   const { CacheSize, ReaderReadAHead, PreloadCache } = settings || {}
 
+  // Minimum 25MB for PreloadCache
+  const minPreloadMB = 25
+
   useEffect(() => {
     if (isNaN(CacheSize) || isNaN(ReaderReadAHead) || isNaN(PreloadCache)) return
 
     setCacheSize(CacheSize)
     setCachePercentage(ReaderReadAHead)
-    setPreloadCachePercentage(PreloadCache)
+
+    // Ensure minimum 25MB for PreloadCache
+    const minPreloadPercent = Math.min(100, Math.ceil((minPreloadMB / CacheSize) * 100))
+    setPreloadCachePercentage(Math.max(PreloadCache, minPreloadPercent))
   }, [CacheSize, ReaderReadAHead, PreloadCache])
+
+  // Adjust preloadCachePercentage when cacheSize changes to ensure minimum 25MB
+  useEffect(() => {
+    const minPreloadPercent = Math.min(100, Math.ceil((minPreloadMB / cacheSize) * 100))
+    if (preloadCachePercentage < minPreloadPercent) {
+      setPreloadCachePercentage(minPreloadPercent)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cacheSize])
 
   const updateSettings = newProps => setSettings({ ...settings, ...newProps })
   const handleChange = (_, newValue) => setSelectedTab(newValue)

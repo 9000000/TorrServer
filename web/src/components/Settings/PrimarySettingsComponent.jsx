@@ -43,6 +43,10 @@ export default function PrimarySettingsComponent({
   const { UseDisk, TorrentsSavePath, RemoveCacheOnDrop } = settings || {}
   const preloadCacheSize = Math.round((cacheSize / 100) * preloadCachePercentage)
 
+  // Minimum 25MB for PreloadCache
+  const minPreloadMB = 25
+  const minPreloadPercent = Math.min(100, Math.ceil((minPreloadMB / cacheSize) * 100))
+
   return (
     <MainSettingsContent>
       <div>
@@ -101,9 +105,9 @@ export default function PrimarySettingsComponent({
           title={`${t('SettingsDialog.PreloadCache')} - ${preloadCachePercentage}% (${preloadCacheSize} ${t('MB')})`}
           value={preloadCachePercentage}
           setValue={setPreloadCachePercentage}
-          sliderMin={0}
+          sliderMin={minPreloadPercent}
           sliderMax={100}
-          inputMin={0}
+          inputMin={minPreloadPercent}
           inputMax={100}
         />
       </div>
