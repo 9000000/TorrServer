@@ -143,7 +143,7 @@ func SetBTSets(sets *BTSets) {
 func SetDefaultConfig() {
 	sets := new(BTSets)
 	sets.CacheSize = 64 * 1024 * 1024 // 64 MB
-	sets.PreloadCache = 39
+	sets.PreloadCache = 40
 	sets.ConnectionsLimit = 25
 	sets.RetrackersMode = 1
 	sets.TorrentDisconnectTimeout = 30

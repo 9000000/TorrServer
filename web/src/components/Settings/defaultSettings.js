@@ -1,7 +1,7 @@
 export default {
   CacheSize: 64,
   ReaderReadAHead: 95,
-  PreloadCache: 39,
+  PreloadCache: 40,
   UseDisk: false,
   TorrentsSavePath: '',
   RemoveCacheOnDrop: false,
