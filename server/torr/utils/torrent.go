@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"server/settings"
 
@@ -34,6 +35,7 @@ var defTrackers = []string{
 }
 
 var loadedTrackers []string
+var lastTrackerUpdate time.Time
 
 func GetTrackerFromFile() []string {
 	name := filepath.Join(settings.Path, "trackers.txt")
@@ -60,7 +62,8 @@ func GetDefTrackers() []string {
 }
 
 func loadNewTracker() {
-	if len(loadedTrackers) > 0 {
+	// Check if we need to refresh: empty or older than 30 days
+	if len(loadedTrackers) > 0 && time.Since(lastTrackerUpdate) < 30*24*time.Hour {
 		return
 	}
 	resp, err := http.Get("https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best_ip.txt")
@@ -77,6 +80,7 @@ func loadNewTracker() {
 				}
 			}
 			loadedTrackers = append(ret, defTrackers...)
+			lastTrackerUpdate = time.Now()
 		}
 	}
 }
