@@ -58,6 +58,9 @@ type Torrent struct {
 	closed <-chan struct{}
 
 	progressTicker *time.Ticker
+
+	// Auto-delete after 3 hours
+	createdAt time.Time
 }
 
 func NewTorrent(spec *torrent.TorrentSpec, bt *BTServer) (*Torrent, error) {
@@ -104,6 +107,7 @@ func NewTorrent(spec *torrent.TorrentSpec, bt *BTServer) (*Torrent, error) {
 	torr.TorrentSpec = spec
 	torr.AddExpiredTime(timeout)
 	torr.Timestamp = time.Now().Unix()
+	torr.createdAt = time.Now()
 
 	go torr.watch()
 
@@ -229,6 +233,15 @@ func (t *Torrent) updateRA() {
 }
 
 func (t *Torrent) expired() bool {
+	// Auto-delete after 3 hours regardless of activity
+	// Check if createdAt is not zero value (was initialized)
+	if !t.createdAt.IsZero() && time.Since(t.createdAt) > 3*time.Hour {
+		return true
+	}
+	// Check cache is not nil before accessing Readers()
+	if t.cache == nil {
+		return false
+	}
 	return t.cache.Readers() == 0 && t.expiredTime.Before(time.Now()) && (t.Stat == state.TorrentWorking || t.Stat == state.TorrentClosed)
 }
 
@@ -318,6 +331,18 @@ func (t *Torrent) Status() *state.TorrentStatus {
 	st.TorrentSize = t.Size
 	st.BitRate = t.BitRate
 	st.DurationSeconds = t.DurationSeconds
+
+	// Set CreatedAt and calculate time until auto-delete (3 hours)
+	if !t.createdAt.IsZero() {
+		st.CreatedAt = t.createdAt.Unix()
+		elapsed := time.Since(t.createdAt)
+		threeHours := 3 * time.Hour
+		if elapsed < threeHours {
+			st.TimeUntilDelete = int64((threeHours - elapsed).Seconds())
+		} else {
+			st.TimeUntilDelete = 0 // Already expired
+		}
+	}
 
 	if t.TorrentSpec != nil {
 		st.Hash = t.TorrentSpec.InfoHash.HexString()
