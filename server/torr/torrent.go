@@ -1,13 +1,17 @@
 package torr
 
 import (
+	"encoding/json"
 	"errors"
-	"server/torrshash"
+	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
+	"server/torrshash"
 	utils2 "server/utils"
 
 	"github.com/anacrolix/torrent"
@@ -55,6 +59,9 @@ type Torrent struct {
 	closed <-chan struct{}
 
 	progressTicker *time.Ticker
+
+	// Auto-delete after 3 hours
+	createdAt time.Time
 }
 
 func NewTorrent(spec *torrent.TorrentSpec, bt *BTServer) (*Torrent, error) {
@@ -101,6 +108,7 @@ func NewTorrent(spec *torrent.TorrentSpec, bt *BTServer) (*Torrent, error) {
 	torr.TorrentSpec = spec
 	torr.AddExpiredTime(timeout)
 	torr.Timestamp = time.Now().Unix()
+	torr.createdAt = time.Now()
 
 	go torr.watch()
 
@@ -226,6 +234,15 @@ func (t *Torrent) updateRA() {
 }
 
 func (t *Torrent) expired() bool {
+	// Auto-delete after 3 hours regardless of activity
+	// Check if createdAt is not zero value (was initialized)
+	if !t.createdAt.IsZero() && time.Since(t.createdAt) > 3*time.Hour {
+		return true
+	}
+	// Check cache is not nil before accessing Readers()
+	if t.cache == nil {
+		return false
+	}
 	return t.cache.Readers() == 0 && t.expiredTime.Before(time.Now()) && (t.Stat == state.TorrentWorking || t.Stat == state.TorrentClosed)
 }
 
@@ -316,8 +333,46 @@ func (t *Torrent) Status() *state.TorrentStatus {
 	st.BitRate = t.BitRate
 	st.DurationSeconds = t.DurationSeconds
 
+	// Set CreatedAt and calculate time until auto-delete (3 hours)
+	if !t.createdAt.IsZero() {
+		st.CreatedAt = t.createdAt.Unix()
+		elapsed := time.Since(t.createdAt)
+		threeHours := 3 * time.Hour
+		if elapsed < threeHours {
+			st.TimeUntilDelete = int64((threeHours - elapsed).Seconds())
+		} else {
+			st.TimeUntilDelete = 0 // Already expired
+		}
+	}
+
 	if t.TorrentSpec != nil {
 		st.Hash = t.TorrentSpec.InfoHash.HexString()
+	}
+
+	// Extract FileExtensions from Data field for torrents in DB state
+	// This ensures extensions are shown even when torrent is not running
+	if t.Data != "" && len(st.FileExtensions) == 0 {
+		var tsFiles struct {
+			TorrServer struct {
+				Files []*state.TorrentFileStat `json:"Files"`
+			} `json:"TorrServer"`
+		}
+		if err := json.Unmarshal([]byte(t.Data), &tsFiles); err == nil {
+			extensionsMap := make(map[string]bool)
+			for _, f := range tsFiles.TorrServer.Files {
+				ext := filepath.Ext(f.Path)
+				if len(ext) > 0 {
+					ext = strings.ToUpper(ext[1:])
+					if ext != "" {
+						extensionsMap[ext] = true
+					}
+				}
+			}
+			for ext := range extensionsMap {
+				st.FileExtensions = append(st.FileExtensions, ext)
+			}
+			sort.Strings(st.FileExtensions)
+		}
 	}
 	if t.Torrent != nil {
 		st.Name = t.Torrent.Name()
@@ -354,13 +409,191 @@ func (t *Torrent) Status() *state.TorrentStatus {
 			sort.Slice(files, func(i, j int) bool {
 				return utils2.CompareStrings(files[i].Path(), files[j].Path())
 			})
+
+			// Check for Smart Indexing (Movie Mode)
+			// Trigger if Category is explicitly "movie"
+			// OR if the largest file dominates the torrent (> 85% of total size), implying it's the main movie file.
+			if len(files) > 1 {
+				totalSize := int64(0)
+				maxSize := int64(0)
+				maxIndex := -1
+
+				for i, f := range files {
+					fLen := f.Length()
+					totalSize += fLen
+					if fLen > maxSize {
+						maxSize = fLen
+						maxIndex = i
+					}
+				}
+
+				isMovie := st.Category == "movie"
+				if !isMovie && totalSize > 0 {
+					// Heuristic: If largest file is > 85% of total size
+					if float64(maxSize) > float64(totalSize)*0.85 {
+						isMovie = true
+					}
+				}
+
+				if isMovie && maxIndex > 0 {
+					largest := files[maxIndex]
+					// remove from current position
+					files = append(files[:maxIndex], files[maxIndex+1:]...)
+					// prepend
+					files = append([]*torrent.File{largest}, files...)
+				}
+			}
+
+			// Collect unique file extensions
+			extensionsMap := make(map[string]bool)
+
+			addExt := func(path string) {
+				ext := filepath.Ext(path)
+				if len(ext) > 0 {
+					ext = strings.ToUpper(ext[1:])
+					if ext != "" {
+						extensionsMap[ext] = true
+					}
+				}
+			}
+
+			// Smart Indexing (TV Series Mode)
+			// Exclude "anime" to keep default indexing as requested
+			catLower := strings.ToLower(st.Category)
+			if strings.Contains(catLower, "tv") && !strings.Contains(catLower, "anime") {
+				// Priority 1: "Season...Episode" structure (Folder/File) - e.g. "Season 12/Episode 01.mkv"
+				reSeasonEp := regexp.MustCompile(`(?i)Season\W*(\d+).*\WEpisode\W*(\d+)`)
+
+				// Priority 2: Standard S...E... (e.g. S12E01)
+				reSE := regexp.MustCompile(`(?i)\bS(\d+)(?:[^0-9E]+)?E(\d+)\b`)
+
+				// Priority 3: X notation (e.g. 12x01)
+				reX := regexp.MustCompile(`(?i)\b(\d+)x(\d+)\b`)
+
+				parseID := func(s string) int {
+					// Try Season/Episode full words first (often in folder names)
+					matches := reSeasonEp.FindStringSubmatch(s)
+					if len(matches) == 3 {
+						season, _ := strconv.Atoi(matches[1])
+						episode, _ := strconv.Atoi(matches[2])
+						if season > 0 && episode > 0 {
+							return season*100 + episode
+						}
+					}
+
+					// Try S...E...
+					matches = reSE.FindStringSubmatch(s)
+					if len(matches) == 3 {
+						season, _ := strconv.Atoi(matches[1])
+						episode, _ := strconv.Atoi(matches[2])
+						if season > 0 && episode > 0 {
+							return season*100 + episode
+						}
+					}
+
+					// Try 12x01
+					matches = reX.FindStringSubmatch(s)
+					if len(matches) == 3 {
+						season, _ := strconv.Atoi(matches[1])
+						episode, _ := strconv.Atoi(matches[2])
+						if season > 0 && episode > 0 {
+							return season*100 + episode
+						}
+					}
+
+					return 0
+				}
+
+				// Single File
+				if len(files) == 1 {
+					f := files[0]
+					id := parseID(f.Path())
+					if id == 0 {
+						id = parseID(t.Title)
+					}
+					if id == 0 {
+						id = parseID(st.Category)
+					}
+
+					if id > 0 {
+						st.FileStats = append(st.FileStats, &state.TorrentFileStat{
+							Id:     id,
+							Path:   f.Path(),
+							Length: f.Length(),
+						})
+						addExt(f.Path())
+						goto FinishStatus
+					}
+				} else {
+					// Multiple Files
+					customIDs := make(map[int]*torrent.File)
+					usedIndices := make(map[int]bool)
+
+					for i, f := range files {
+						id := parseID(f.Path())
+						if id > 0 {
+							customIDs[id] = f
+							usedIndices[i] = true
+						}
+					}
+
+					if len(customIDs) > 0 {
+						st.FileStats = make([]*state.TorrentFileStat, 0, len(files))
+
+						var sortedIDs []int
+						for id := range customIDs {
+							sortedIDs = append(sortedIDs, id)
+						}
+						sort.Ints(sortedIDs)
+
+						for _, id := range sortedIDs {
+							f := customIDs[id]
+							st.FileStats = append(st.FileStats, &state.TorrentFileStat{
+								Id:     id,
+								Path:   f.Path(),
+								Length: f.Length(),
+							})
+							addExt(f.Path())
+						}
+
+						defaultID := 10000
+						for i, f := range files {
+							if !usedIndices[i] {
+								st.FileStats = append(st.FileStats, &state.TorrentFileStat{
+									Id:     defaultID,
+									Path:   f.Path(),
+									Length: f.Length(),
+								})
+								defaultID++
+								addExt(f.Path())
+							}
+						}
+
+						// Sort by ID
+						sort.Slice(st.FileStats, func(i, j int) bool {
+							return st.FileStats[i].Id < st.FileStats[j].Id
+						})
+						goto FinishStatus
+					}
+				}
+			}
+
+			// Default Logic (Mixed with Extension Collection)
 			for i, f := range files {
 				st.FileStats = append(st.FileStats, &state.TorrentFileStat{
 					Id:     i + 1, // in web id 0 is undefined
 					Path:   f.Path(),
 					Length: f.Length(),
 				})
+				addExt(f.Path())
 			}
+		FinishStatus:
+
+			// Convert map to sorted slice
+			for ext := range extensionsMap {
+				st.FileExtensions = append(st.FileExtensions, ext)
+			}
+			sort.Strings(st.FileExtensions)
 
 			th := torrshash.New(st.Hash)
 			th.AddField(torrshash.TagTitle, st.Title)

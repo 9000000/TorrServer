@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Tag name for release (e.g. v1.0.0)"
+        required: true
+        default: "manual-build"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.0"
+          check-latest: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Prepare upx
+        run: chmod +x upx
+
+      - name: Update version in version.go
+        run: |
+          VERSION="${{ github.event.inputs.tag_name || github.ref_name }}"
+          # Remove 'v' prefix if present and convert to MatriX format
+          VERSION="${VERSION#v}"
+          # Handle MatriX prefix if not present
+          if [[ ! "$VERSION" =~ ^MatriX ]]; then
+            VERSION="MatriX.${VERSION}"
+          fi
+          echo "Setting version to: $VERSION"
+          sed -i "s/const Version = \".*\"/const Version = \"$VERSION\"/" server/version/version.go
+          cat server/version/version.go
+
+      - name: Build
+        run: ./build-all.sh
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: TorrServer-Binaries
+          path: dist/*
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        with:
+          files: dist/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}

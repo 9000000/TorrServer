@@ -103,7 +103,7 @@ export default function DialogTorrentDetailsContent({ closeDialog, torrent }) {
 
   const preloadPerc = settings?.PreloadCache
   const preloadSize = (Capacity / 100) * preloadPerc
-  const bufferSize = preloadSize > 33554432 ? preloadSize : 33554432 // Not less than 32MB
+  const bufferSize = preloadSize > 26214400 ? preloadSize : 26214400 // Not less than 25MB
 
   const getParsedTitle = () => {
     const newNameStringArr = []
@@ -204,7 +204,7 @@ export default function DialogTorrentDetailsContent({ closeDialog, torrent }) {
             <CacheSection>
               <SectionHeader>
                 <SectionTitle mb={20}>{t('Buffer')}</SectionTitle>
-                {bufferSize <= 33554432 && <SectionSubName>{t('BufferNote')}</SectionSubName>}
+                {bufferSize <= 26214400 && <SectionSubName>{t('BufferNote')}</SectionSubName>}
                 <LoadingProgress
                   value={Filled}
                   style={{ marginTop: '5px' }}
