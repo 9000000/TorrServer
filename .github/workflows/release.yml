@@ -35,6 +35,8 @@ jobs:
           
       - name: Build Web UI
         working-directory: web
+        env:
+          CI: false
         run: |
           yarn install
           NODE_OPTIONS=--openssl-legacy-provider yarn build

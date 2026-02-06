@@ -187,7 +187,6 @@ const Torrent = ({ torrent }) => {
                 <div className='description-statistics-element-value'>{fileExtensions.slice(0, 3).join(', ')}</div>
               </div>
             )}
-
           </div>
         </TorrentCardDescription>
       </TorrentCard>
