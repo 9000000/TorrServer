@@ -32,6 +32,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          
+      - name: Build Web UI
+        working-directory: web
+        run: |
+          yarn install
+          NODE_OPTIONS=--openssl-legacy-provider yarn build
 
       - name: Prepare upx
         run: chmod +x upx
