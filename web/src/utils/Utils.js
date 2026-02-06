@@ -6,17 +6,23 @@ import { torrentsHost } from './Hosts'
 export function humanizeSize(size) {
   if (!size) return ''
   const i = Math.floor(Math.log(size) / Math.log(1024))
-  return `${(size / Math.pow(1024, i)).toFixed(2) * 1} ${
-    [i18n.t('B'), i18n.t('KB'), i18n.t('MB'), i18n.t('GB'), i18n.t('TB')][i]
-  }`
+  return `${(size / Math.pow(1024, i)).toFixed(2) * 1} ${[i18n.t('B'), i18n.t('KB'), i18n.t('MB'), i18n.t('GB'), i18n.t('TB')][i]
+    }`
 }
 
 export function humanizeSpeed(speed) {
   if (!speed) return ''
   const i = Math.floor(Math.log(speed * 8) / Math.log(1000))
-  return `${((speed * 8) / Math.pow(1000, i)).toFixed(0) * 1} ${
-    [i18n.t('bps'), i18n.t('kbps'), i18n.t('Mbps'), i18n.t('Gbps'), i18n.t('Tbps')][i]
-  }`
+  return `${((speed * 8) / Math.pow(1000, i)).toFixed(0) * 1} ${[i18n.t('bps'), i18n.t('kbps'), i18n.t('Mbps'), i18n.t('Gbps'), i18n.t('Tbps')][i]
+    }`
+}
+
+export function humanizeDuration(seconds) {
+  if (!seconds || seconds <= 0) return ''
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  if (h > 0) return `${h}h${m > 0 ? ` ${m}m` : ''}`
+  return `${m}m`
 }
 
 export function getPeerString(torrent) {

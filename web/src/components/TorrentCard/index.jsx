@@ -5,7 +5,7 @@ import {
   Close as CloseIcon,
   Delete as DeleteIcon,
 } from '@material-ui/icons'
-import { getPeerString, humanizeSize, humanizeSpeed, removeRedundantCharacters } from 'utils/Utils'
+import { getPeerString, humanizeSize, humanizeSpeed, removeRedundantCharacters, humanizeDuration } from 'utils/Utils'
 import { playlistTorrHost, streamHost, torrentsHost } from 'utils/Hosts'
 import { NoImageIcon } from 'icons'
 import DialogTorrentDetailsContent from 'components/DialogTorrentDetailsContent'
@@ -58,6 +58,8 @@ const Torrent = ({ torrent }) => {
     hash,
     stat,
     data,
+    time_until_delete: timeUntilDelete,
+    file_extensions: fileExtensions,
   } = torrent
 
   const dropTorrent = () => axios.post(torrentsHost(), { action: 'drop', hash })
@@ -171,6 +173,21 @@ const Torrent = ({ torrent }) => {
               <div className='description-section-name'>{t('Peers')}</div>
               <div className='description-statistics-element-value'>{getPeerString(torrent) || '---'}</div>
             </div>
+
+            {timeUntilDelete > 0 && (
+              <div className='description-statistics-element-wrapper'>
+                <div className='description-section-name'>{t('Expires')}</div>
+                <div className='description-statistics-element-value'>{humanizeDuration(timeUntilDelete)}</div>
+              </div>
+            )}
+
+            {fileExtensions && fileExtensions.length > 0 && (
+              <div className='description-statistics-element-wrapper'>
+                <div className='description-section-name'>{t('Type')}</div>
+                <div className='description-statistics-element-value'>{fileExtensions.slice(0, 3).join(', ')}</div>
+              </div>
+            )}
+
           </div>
         </TorrentCardDescription>
       </TorrentCard>
