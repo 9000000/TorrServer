@@ -5,6 +5,8 @@ After = syslog.target network.target nss-lookup.target
 [Service]
 Type = simple
 Environment="GODEBUG=madvdontneed=1"
+# ExecStart = /opt/torrserver/TorrServer -d /opt/torrserver/db
+# Please uncomment and update the path above to match your installation
 ExecStart = /path/to/torrserver -d /path/to/db/
 ExecReload = /bin/kill -HUP ${MAINPID}
 ExecStop = /bin/kill -INT ${MAINPID}
