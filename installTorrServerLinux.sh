@@ -39,8 +39,8 @@ isAuthUser=""
 isAuthPass=""
 
 # Constants
-readonly REPO_URL="https://github.com/YouROK/TorrServer"
-readonly REPO_API_URL="https://api.github.com/repos/YouROK/TorrServer"
+readonly REPO_URL="https://github.com/9000000/TorrServer"
+readonly REPO_API_URL="https://api.github.com/repos/9000000/TorrServer"
 readonly VERSION_PREFIX="MatriX"
 readonly BINARY_NAME_PREFIX="TorrServer-linux"
 readonly MIN_GLIBC_VERSION="2.32"
@@ -100,6 +100,8 @@ declare -A MSG_EN=(
   [have_latest]="You have latest TorrServer %s"
   [update_found]="TorrServer update found!"
   [will_install]="Will install TorrServer version %s"
+  [update_complete]="TorrServer updated successfully to %s"
+  [update_failed]="Failed to update TorrServer"
 
   # Installation
   [installing_packages]="Installing missing packages…"
@@ -227,6 +229,8 @@ declare -A MSG_RU=(
   [have_latest]="Установлен TorrServer последней версии %s"
   [update_found]="Доступно обновление сервера"
   [will_install]="Будет установлена версия TorrServer %s"
+  [update_complete]="TorrServer успешно обновлен до версии %s"
+  [update_failed]="Не удалось обновить TorrServer"
 
   # Installation
   [installing_packages]="Устанавливаем недостающие пакеты…"
@@ -1663,6 +1667,9 @@ updateTorrServerVersion() {
     :
   fi
 
+  # Wait a moment for service to fully stop
+  sleep 1
+
   local binName
   binName=$(getBinaryName)
   local urlBin
@@ -1672,7 +1679,37 @@ updateTorrServerVersion() {
     urlBin=$(buildDownloadUrl "$target_version" "$binName")
   fi
 
-  downloadBinary "$urlBin" "$dirInstall/$binName" "$target_version"
+  # Download to temporary file first
+  local temp_binary="${dirInstall}/${binName}.new"
+  downloadBinary "$urlBin" "$temp_binary" "$target_version"
+
+  # Verify downloaded file is not empty
+  if [[ ! -f "$temp_binary" ]] || [[ $(stat -c%s "$temp_binary" 2>/dev/null) -eq 0 ]]; then
+    if [[ $SILENT_MODE -eq 0 ]]; then
+      echo " - $(colorize red "ERROR: Downloaded binary is empty or missing")"
+    fi
+    rm -f "$temp_binary" 2>/dev/null || true
+    return 1
+  fi
+
+  # Backup old binary
+  if [[ -f "$dirInstall/$binName" ]]; then
+    mv "$dirInstall/$binName" "${dirInstall}/${binName}.old" 2>/dev/null || true
+  fi
+
+  # Move new binary to final location
+  mv "$temp_binary" "$dirInstall/$binName"
+  chmod +x "$dirInstall/$binName"
+
+  # Ensure correct ownership
+  local owner="$username"
+  local group
+  if [[ "$username" == "root" ]]; then
+    group="root"
+  else
+    group="$(id -gn "$username" 2>/dev/null || echo "$username")"
+  fi
+  chown "$owner":"$group" "$dirInstall/$binName" 2>/dev/null || true
 
   # Update service file to reflect user change
   if [[ -f "$dirInstall/$serviceName.service" ]]; then
@@ -1687,6 +1724,27 @@ updateTorrServerVersion() {
 
   if ! systemctlCmd start "$serviceName.service"; then
     :
+  fi
+
+  # Clean up old backup after successful start (optional)
+  if systemctlCmd --quiet is-active "$serviceName.service"; then
+    rm -f "${dirInstall}/${binName}.old" 2>/dev/null || true
+    if [[ $SILENT_MODE -eq 0 ]]; then
+      echo ""
+      echo " - $(colorize green "$(msg update_complete "$target_version")")"
+      echo ""
+    else
+      printf "%s\n" "$(msg update_complete "$target_version")"
+    fi
+  else
+    if [[ $SILENT_MODE -eq 0 ]]; then
+      echo " - $(colorize yellow "$(msg update_failed)")"
+      echo " - $(colorize yellow "$(msg service_start_failed)")"
+    else
+      printf "%s\n" "$(msg update_failed)"
+      printf "%s\n" "$(msg service_start_failed)"
+    fi
+    return 1
   fi
 
   return 0

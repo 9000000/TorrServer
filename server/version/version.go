@@ -5,7 +5,7 @@ import (
 	"runtime/debug"
 )
 
-const Version = "MatriX.137"
+const Version = "MatriX.137.6"
 
 func GetTorrentVersion() string {
 	bi, ok := debug.ReadBuildInfo()

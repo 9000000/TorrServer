@@ -3,7 +3,7 @@
 After starting the container, the latest server is downloaded from GitHub.\
 If you need update server to latest, repull container
 
-Source code: https://github.com/YouROK/TorrServer
+Source code: https://github.com/9000000/TorrServer
 
 --------
 
