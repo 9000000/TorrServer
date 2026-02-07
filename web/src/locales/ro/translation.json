@@ -28,7 +28,7 @@
   "B": "B",
   "bps": "bps",
   "Buffer": "Buffer de preîncărcare / Cache",
-  "BufferNote": "Setați Preîncărcare cache înainte de redare > 32 MB în setări pentru a modifica mărimea preîncărcării.",
+  "BufferNote": "Setați Preîncărcare cache înainte de redare > 15 MB în setări pentru a modifica mărimea preîncărcării.",
   "Cache": "Cache",
   "Cancel": "Anulare",
   "Category": "Categorie",
