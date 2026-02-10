@@ -37,6 +37,7 @@ jobs:
         working-directory: web
         env:
           CI: false
+          SKIP_PREFLIGHT_CHECK: true
         run: |
           yarn install
           NODE_OPTIONS=--openssl-legacy-provider yarn build
