@@ -77,5 +77,8 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "homepage": "./"
+  "homepage": "./",
+  "resolutions": {
+    "eslint": "7.32.0"
+  }
 }
