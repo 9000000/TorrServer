@@ -36,4 +36,4 @@ toolchains/
 /toolchain/
 /server/web/pages/template/pages/msx
 
-.agent/*
+.agent/
