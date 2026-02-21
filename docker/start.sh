@@ -18,7 +18,7 @@ cd /opt/torrserver
 
 rm -f ${binName}*
 
-wget -O $binName "https://github.com/YouROK/TorrServer/releases/latest/download/$binName"
+wget -O $binName "https://github.com/9000000/TorrServer/releases/latest/download/$binName"
 chmod +x $binName
 
 FLAGS=""
