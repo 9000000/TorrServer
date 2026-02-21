@@ -379,6 +379,10 @@ func (t *Torrent) Status() *state.TorrentStatus {
 			st.TorrentSize = t.Torrent.Length()
 
 			files := t.Files()
+			filesCopy := make([]*torrent.File, len(files))
+			copy(filesCopy, files)
+			files = filesCopy
+
 			sort.Slice(files, func(i, j int) bool {
 				return utils2.CompareStrings(files[i].Path(), files[j].Path())
 			})
