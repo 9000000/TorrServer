@@ -597,5 +597,9 @@ func (t *Torrent) CacheState() *cacheSt.CacheState {
 		st.Torrent = t.Status()
 		return st
 	}
-	return nil
+	// Return status even without cache (e.g. during GotInfo phase)
+	// so frontend can get file_stats as soon as info is available
+	st := &cacheSt.CacheState{}
+	st.Torrent = t.Status()
+	return st
 }
