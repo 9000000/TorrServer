@@ -379,6 +379,10 @@ func (t *Torrent) Status() *state.TorrentStatus {
 			st.TorrentSize = t.Torrent.Length()
 
 			files := t.Files()
+			filesCopy := make([]*torrent.File, len(files))
+			copy(filesCopy, files)
+			files = filesCopy
+
 			sort.Slice(files, func(i, j int) bool {
 				return utils2.CompareStrings(files[i].Path(), files[j].Path())
 			})
@@ -597,5 +601,9 @@ func (t *Torrent) CacheState() *cacheSt.CacheState {
 		st.Torrent = t.Status()
 		return st
 	}
-	return nil
+	// Return status even without cache (e.g. during GotInfo phase)
+	// so frontend can get file_stats as soon as info is available
+	st := &cacheSt.CacheState{}
+	st.Torrent = t.Status()
+	return st
 }
