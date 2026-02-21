@@ -53,17 +53,25 @@ export default function DialogTorrentDetailsContent({ closeDialog, torrent }) {
     title,
     category,
     name,
-    stat,
-    download_speed: downloadSpeed,
-    upload_speed: uploadSpeed,
-    torrent_size: torrentSize,
-    file_stats: torrentFileList,
+    stat: propStat,
+    download_speed: propDownloadSpeed,
+    upload_speed: propUploadSpeed,
+    torrent_size: propTorrentSize,
+    file_stats: propFileStats,
   } = torrent
 
   const cache = useUpdateCache(hash)
   const settings = useGetSettings(cache)
 
   const { Capacity, PiecesCount, PiecesLength, Filled } = cache
+
+  // Use updated data from cache.Torrent when available (fixes "No playable files" when torrent info arrives after initial load)
+  const cacheTorrent = cache?.Torrent
+  const stat = cacheTorrent?.stat ?? propStat
+  const downloadSpeed = cacheTorrent?.download_speed ?? propDownloadSpeed
+  const uploadSpeed = cacheTorrent?.upload_speed ?? propUploadSpeed
+  const torrentSize = cacheTorrent?.torrent_size ?? propTorrentSize
+  const torrentFileList = cacheTorrent?.file_stats || propFileStats
 
   useEffect(() => {
     if (playableFileList && seasonAmount === null) {
@@ -80,7 +88,11 @@ export default function DialogTorrentDetailsContent({ closeDialog, torrent }) {
   }, [playableFileList, seasonAmount])
 
   useEffect(() => {
-    setPlayableFileList(torrentFileList?.filter(({ path }) => isFilePlayable(path)))
+    const newPlayable = torrentFileList?.filter(({ path }) => isFilePlayable(path))
+    // Only update if we have playable files or if we didn't have any before
+    if (newPlayable?.length > 0 || !playableFileList?.length) {
+      setPlayableFileList(newPlayable)
+    }
   }, [torrentFileList])
 
   useEffect(() => {
