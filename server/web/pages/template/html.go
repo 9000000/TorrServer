@@ -118,11 +118,11 @@ var Mstile150x150png []byte
 //go:embed pages/site.webmanifest
 var Sitewebmanifest []byte
 
-//go:embed pages/static/js/main.611d5d9d.js
-var Staticjsmain611d5d9djs []byte
+//go:embed pages/static/js/main.cb8a5a15.js
+var Staticjsmaincb8a5a15js []byte
 
-//go:embed pages/static/js/main.611d5d9d.js.LICENSE.txt
-var Staticjsmain611d5d9djsLICENSEtxt []byte
+//go:embed pages/static/js/main.cb8a5a15.js.LICENSE.txt
+var Staticjsmaincb8a5a15jsLICENSEtxt []byte
 
-//go:embed pages/static/js/main.611d5d9d.js.map
-var Staticjsmain611d5d9djsmap []byte
+//go:embed pages/static/js/main.cb8a5a15.js.map
+var Staticjsmaincb8a5a15jsmap []byte

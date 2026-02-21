@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button, ButtonGroup } from '@material-ui/core'
 import ptt from 'parse-torrent-title'
 import axios from 'axios'
-import { viewedHost } from 'utils/Hosts'
+import { viewedHost, torrentsHost } from 'utils/Hosts'
 import { GETTING_INFO, IN_DB } from 'torrentStates'
 import CircularProgress from '@material-ui/core/CircularProgress'
 import { useTranslation } from 'react-i18next'
@@ -73,6 +73,33 @@ export default function DialogTorrentDetailsContent({ closeDialog, torrent }) {
   const torrentSize = cacheTorrent?.torrent_size ?? propTorrentSize
   const torrentFileList = cacheTorrent?.file_stats || propFileStats
 
+  // Direct polling: if file_stats is still null, actively fetch torrent status
+  useEffect(() => {
+    if (torrentFileList?.length) return // already have data
+
+    let active = true
+    const poll = () => {
+      if (!active) return
+      axios.post(torrentsHost(), { action: 'get', hash }).then(({ data }) => {
+        if (!active) return
+        if (data?.file_stats?.length) {
+          const playable = data.file_stats.filter(({ path }) => isFilePlayable(path))
+          if (playable.length > 0) {
+            setPlayableFileList(playable)
+          }
+        } else {
+          // Retry in 1 second
+          setTimeout(poll, 1000)
+        }
+      }).catch(() => {
+        if (active) setTimeout(poll, 2000)
+      })
+    }
+    // Start polling after a short delay (give cache a chance first)
+    const timer = setTimeout(poll, 500)
+    return () => { active = false; clearTimeout(timer) }
+  }, [hash, torrentFileList])
+
   useEffect(() => {
     if (playableFileList && seasonAmount === null) {
       const seasons = []
@@ -89,7 +116,6 @@ export default function DialogTorrentDetailsContent({ closeDialog, torrent }) {
 
   useEffect(() => {
     const newPlayable = torrentFileList?.filter(({ path }) => isFilePlayable(path))
-    // Only update if we have playable files or if we didn't have any before
     if (newPlayable?.length > 0 || !playableFileList?.length) {
       setPlayableFileList(newPlayable)
     }
