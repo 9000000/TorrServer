@@ -154,7 +154,7 @@
     "FriendlyName": "DLNA Server Name",
     "FriendlyNameHint": "Leave blank to use default",
     "JsonFile": "JSON File",
-    "MobileAppSettings": "Mobile app settings",
+    "MobileAppSettings": "Players",
     "PeersListenPort": "Peers Listen Port",
     "PeersListenPortHint": "1024 - 65535, 0 - random",
     "PreloadCache": "Preload Cache Before Play",
@@ -189,7 +189,7 @@
     "Tabs": {
       "Additional": "Additional",
       "AdditionalDisabled": "(enable PRO mode)",
-      "App": "Players",
+      "App": "Application",
       "Main": "Main"
     },
     "TorrentDisconnectTimeout": "Torrent Disconnect Timeout",
@@ -202,6 +202,7 @@
     "UseInfuseHint": "Add Infuse player button to torrent content list",
     "UseVLC": "Prompt to open video in VLC",
     "UseVLCHint": "Add VLC player button to torrent content list",
+    "UseVLCDesktopHintPrefix": "Desktop requires",
     "UseIINA": "Prompt to open video in IINA",
     "UseIINAHint": "Add IINA player button to torrent content list (macOS only)",
     "ViewedHistoryStorage": "Viewed History Storage:",
