@@ -35,11 +35,11 @@ ENV GOARCH=$TARGETARCH
 
 # Build torrserver
 RUN apk add --update g++ \
-&& go run gen_web.go \
-&& cd server \
-&& go mod tidy \
-&& go clean -i -r -cache \
-&& go build -ldflags '-w -s' --o "torrserver" ./cmd
+    && go run gen_web.go \
+    && cd server \
+    && go mod tidy \
+    && go clean -i -r -cache \
+    && go build -ldflags '-w -s' --o "torrserver" ./cmd
 ### BUILD TORRSERVER MULTIARCH END ###
 
 
