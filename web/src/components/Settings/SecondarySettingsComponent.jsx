@@ -72,6 +72,15 @@ export default function SecondarySettingsComponent({ settings, inputForm }) {
     ProxyHosts,
   } = settings || {}
 
+  // Local state for ProxyHosts text input
+  const [proxyHostsText, setProxyHostsText] = useState('')
+
+  // Sync proxyHostsText with ProxyHosts when settings change
+  useEffect(() => {
+    const textValue = Array.isArray(ProxyHosts) ? ProxyHosts.join(', ') : ProxyHosts || ''
+    setProxyHostsText(textValue)
+  }, [ProxyHosts])
+
   // Use useMemo to compute basePath once
   const basePath = useMemo(() => {
     if (typeof window !== 'undefined') {
@@ -456,7 +465,17 @@ export default function SecondarySettingsComponent({ settings, inputForm }) {
       {/* Proxy hosts */}
       <TextField
         onChange={e => {
-          const hostsArray = e.target.value.split(',').map(s => s.trim())
+          setProxyHostsText(e.target.value)
+        }}
+        onBlur={e => {
+          const inputValue = e.target.value.trim()
+          const hostsArray =
+            inputValue === ''
+              ? []
+              : inputValue
+                  .split(',')
+                  .map(s => s.trim())
+                  .filter(s => s !== '')
 
           inputForm({
             target: {
@@ -469,7 +488,7 @@ export default function SecondarySettingsComponent({ settings, inputForm }) {
         id='ProxyHosts'
         label={t('SettingsDialog.ProxyHosts')}
         helperText={t('SettingsDialog.ProxyHostsHint')}
-        value={Array.isArray(ProxyHosts) ? ProxyHosts.join(', ') : ''}
+        value={proxyHostsText}
         type='text'
         variant='outlined'
         fullWidth
