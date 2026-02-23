@@ -78,6 +78,9 @@ export default function SettingsDialog({ handleClose }) {
       else sets[id] = Boolean(checked)
     } else if (type === 'url' || type === 'text') {
       sets[id] = value
+    } else if (!type && value !== undefined) {
+      // Fallback for custom handlers that don't provide type (e.g., ProxyHosts array)
+      sets[id] = value
     }
     setSettings(sets)
   }
