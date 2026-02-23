@@ -71,8 +71,6 @@ github.com/RoaringBitmap/roaring v1.9.4 h1:yhEIoH4YezLYT04s1nHehNO64EKFTop/wBhxv
 github.com/RoaringBitmap/roaring v1.9.4/go.mod h1:6AXUsoIEzDTFFQCe1RbGA6uFONMhvejWj5rqITANK90=
 github.com/Shopify/sarama v1.19.0/go.mod h1:FVkBWblsNy7DGZRfXLU0O9RCGt5g3g3yEuWXgklEdEo=
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
-github.com/YouROK/tunsgo v0.0.6 h1:cu4OCD6MKFWAgSIntp8TJoFZ6fzeO9s7EvFpOeaQh8Y=
-github.com/YouROK/tunsgo v0.0.6/go.mod h1:+lKq018wc4IQwg2cX8qhqeCSrhteosv/ovIkDRu/ts0=
 github.com/agnivade/levenshtein v1.2.1 h1:EHBY3UOn1gwdy/VbFwgo4cxecRznFk7fKWN1KOX7eoM=
 github.com/agnivade/levenshtein v1.2.1/go.mod h1:QVVI16kDrtSuwcpd0p1+xMC6Z/VfhtCyDIjcwga4/DU=
 github.com/alecthomas/assert/v2 v2.0.0-alpha3 h1:pcHeMvQ3OMstAWgaeaXIAL8uzB9xMm2zlxt+/4ml8lk=
@@ -826,6 +824,8 @@ github.com/tinylib/msgp v1.1.0/go.mod h1:+d+yLhGm8mzTaHzB+wgMYrodPfmZrzkirds8fDW
 github.com/tinylib/msgp v1.1.2/go.mod h1:+d+yLhGm8mzTaHzB+wgMYrodPfmZrzkirds8fDWklFE=
 github.com/tsynik/torrent v1.2.22 h1:J6Se1Tk4W6l7yew3Ykw1my3EfG75uUNTRUdA5XPtHVk=
 github.com/tsynik/torrent v1.2.22/go.mod h1:C5byvvOO9wEdqWHHkjSp2+AH9kinJ2r1Z4GhT1xkRdI=
+github.com/tsynik/tunsgo v0.0.7 h1:jIfk+bUZXGBox5MePXAfV2ZulZk63Lapy4RiAcNCge0=
+github.com/tsynik/tunsgo v0.0.7/go.mod h1:aaOLeXmDgb85h41oq2gwegQMpOfkPzErUDP0lqODYfE=
 github.com/tsynik/upnp v0.1.5 h1:2KXGBtY6MZHxq17p/N372Kr/0MJX3ADAimfvPcTpap8=
 github.com/tsynik/upnp v0.1.5/go.mod h1:NiwP/o2sXNehx/4DbRT78Itii9F13d7NUrdHcVlpPPs=
 github.com/tv42/httpunix v0.0.0-20150427012821-b75d8614f926/go.mod h1:9ESjWnEqriFuLhtthL60Sar/7RFoluCcXsuvEwTV5KM=
