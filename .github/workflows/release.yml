@@ -10,6 +10,51 @@ on:
         description: "Tag name for release (e.g. v1.0.0)"
         required: true
         default: "manual-build"
+      build_all:
+        description: "🔘 Build ALL platforms (override individual selections)"
+        required: false
+        type: boolean
+        default: false
+      linux_amd64:
+        description: "🐧 Linux AMD64 (x86_64)"
+        required: false
+        type: boolean
+        default: true
+      linux_arm64:
+        description: "🐧 Linux ARM64 (aarch64)"
+        required: false
+        type: boolean
+        default: true
+      linux_arm7:
+        description: "🐧 Linux ARM7 (32-bit ARM)"
+        required: false
+        type: boolean
+        default: false
+      windows:
+        description: "🪟 Windows (AMD64 + 386)"
+        required: false
+        type: boolean
+        default: false
+      macos:
+        description: "🍎 macOS (AMD64 + ARM64)"
+        required: false
+        type: boolean
+        default: false
+      android_arm64:
+        description: "🤖 Android ARM64 (aarch64)"
+        required: false
+        type: boolean
+        default: true
+      android_arm7:
+        description: "🤖 Android ARM7 (32-bit)"
+        required: false
+        type: boolean
+        default: true
+      other_platforms:
+        description: "📦 Other (Linux ARM5/386/MIPS/RISCV64, FreeBSD, Android x86)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -18,9 +63,45 @@ jobs:
   build-and-release:
     name: Build and Release
     runs-on: ubuntu-latest
+    env:
+      # For push (tag) events, build all platforms
+      # For workflow_dispatch, use the checkbox selections
+      SELECTIVE_BUILD: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
+      BUILD_ALL: ${{ github.event.inputs.build_all || 'false' }}
+      BUILD_LINUX_AMD64: ${{ github.event.inputs.linux_amd64 || 'false' }}
+      BUILD_LINUX_ARM64: ${{ github.event.inputs.linux_arm64 || 'false' }}
+      BUILD_LINUX_ARM7: ${{ github.event.inputs.linux_arm7 || 'false' }}
+      BUILD_WINDOWS: ${{ github.event.inputs.windows || 'false' }}
+      BUILD_MACOS: ${{ github.event.inputs.macos || 'false' }}
+      BUILD_ANDROID_ARM64: ${{ github.event.inputs.android_arm64 || 'false' }}
+      BUILD_ANDROID_ARM7: ${{ github.event.inputs.android_arm7 || 'false' }}
+      BUILD_OTHER: ${{ github.event.inputs.other_platforms || 'false' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Show build configuration
+        run: |
+          echo "========================================="
+          echo "  TorrServer Build Configuration"
+          echo "========================================="
+          echo "Event type: ${{ github.event_name }}"
+          echo "Selective build: ${SELECTIVE_BUILD}"
+          echo "-----------------------------------------"
+          if [[ "${SELECTIVE_BUILD}" == "false" ]]; then
+            echo "🚀 Building ALL platforms (tag push)"
+          else
+            echo "Build All Override: ${BUILD_ALL}"
+            echo "Linux AMD64:       ${BUILD_LINUX_AMD64}"
+            echo "Linux ARM64:       ${BUILD_LINUX_ARM64}"
+            echo "Linux ARM7:        ${BUILD_LINUX_ARM7}"
+            echo "Windows:           ${BUILD_WINDOWS}"
+            echo "macOS:             ${BUILD_MACOS}"
+            echo "Android ARM64:     ${BUILD_ANDROID_ARM64}"
+            echo "Android ARM7:      ${BUILD_ANDROID_ARM7}"
+            echo "Other platforms:   ${BUILD_OTHER}"
+          fi
+          echo "========================================="
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -58,8 +139,32 @@ jobs:
           sed -i "s/const Version = \".*\"/const Version = \"$VERSION\"/" server/version/version.go
           cat server/version/version.go
 
+      - name: Set up Android NDK
+        if: >
+          github.event_name == 'push' ||
+          github.event.inputs.build_all == 'true' ||
+          github.event.inputs.android_arm64 == 'true' ||
+          github.event.inputs.android_arm7 == 'true' ||
+          github.event.inputs.other_platforms == 'true'
+        run: |
+          NDK_VERSION="25.2.9519653"
+          echo "Installing Android NDK ${NDK_VERSION}..."
+          echo "y" | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "ndk;${NDK_VERSION}" > /dev/null 2>&1
+          export ANDROID_NDK_HOME="${ANDROID_HOME}/ndk/${NDK_VERSION}"
+          echo "ANDROID_NDK_HOME=${ANDROID_NDK_HOME}" >> $GITHUB_ENV
+          echo "NDK installed at: ${ANDROID_NDK_HOME}"
+          ls -la "${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/" | head -10
+
       - name: Build
         run: ./build-all.sh
+
+      - name: List built binaries
+        run: |
+          echo "========================================="
+          echo "  Built Binaries"
+          echo "========================================="
+          ls -lh dist/ 2>/dev/null || echo "No binaries found in dist/"
+          echo "========================================="
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
