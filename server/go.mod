@@ -3,6 +3,7 @@ module server
 go 1.25.5
 
 replace (
+	github.com/YouROK/tunsgo v0.0.6 => github.com/tsynik/tunsgo v0.0.7
 	github.com/anacrolix/torrent v1.59.1 => github.com/tsynik/torrent v1.2.22
 	github.com/anacrolix/upnp v0.1.4 => github.com/tsynik/upnp v0.1.5
 )

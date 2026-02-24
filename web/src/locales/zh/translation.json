@@ -152,7 +152,7 @@
     "FriendlyName": "DLNA服务器名称",
     "FriendlyNameHint": "留空使用默认值",
     "JsonFile": "JSON文件",
-    "MobileAppSettings": "移动APP设置",
+    "MobileAppSettings": "播放器",
     "PeersListenPort": "Peers监听端口",
     "PeersListenPortHint": "1024 - 65535，0 - 自动",
     "PreloadCache": "播放前预加载缓存",
@@ -187,7 +187,7 @@
     "Tabs": {
       "Additional": "附加",
       "AdditionalDisabled": "（启用专业模式）",
-      "App": "播放器",
+      "App": "应用程序",
       "Main": "主要"
     },
     "TorrentDisconnectTimeout": "种子断开超时",
@@ -200,6 +200,7 @@
     "UseInfuseHint": "将 Infuse 播放器按钮添加到种子内容列表",
     "UseVLC": "提示在VLC中打开视频",
     "UseVLCHint": "将VLC播放器按钮添加到种子内容列表",
+    "UseVLCDesktopHintPrefix": "桌面端需要",
     "UseIINA": "提示在 IINA 中打开视频",
     "UseIINAHint": "将 IINA 播放器按钮添加到种子内容列表（仅 macOS）",
     "ViewedHistoryStorage": "查看历史存储：",
