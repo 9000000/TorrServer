@@ -1,13 +1,15 @@
 module server
 
-go 1.25.5
+go 1.25
 
 replace (
+	github.com/YouROK/tunsgo v0.0.6 => github.com/tsynik/tunsgo v0.0.7
 	github.com/anacrolix/torrent v1.59.1 => github.com/tsynik/torrent v1.2.22
 	github.com/anacrolix/upnp v0.1.4 => github.com/tsynik/upnp v0.1.5
 )
 
 require (
+	github.com/YouROK/tunsgo v0.0.6
 	github.com/agnivade/levenshtein v1.2.1
 	github.com/alexflint/go-arg v1.6.0
 	github.com/anacrolix/dms v1.7.2
@@ -27,7 +29,6 @@ require (
 	github.com/swaggo/gin-swagger v1.6.1
 	github.com/swaggo/swag v1.16.6
 	github.com/wlynxg/anet v0.0.5
-	github.com/yourok/tunsgo v0.0.0-20260219202119-1a2c30d897ae
 	go.etcd.io/bbolt v1.4.3
 	golang.org/x/exp v0.0.0-20260112195511-716be5621a96
 	golang.org/x/image v0.33.0

@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"server/proxy"
 	"sync"
 
 	"github.com/anacrolix/publicip"
@@ -67,6 +68,8 @@ func (bt *BTServer) Connect() error {
 	bt.client, err = torrent.NewClient(bt.config)
 	bt.torrents = make(map[metainfo.Hash]*Torrent)
 	InitApiHelper(bt)
+
+	proxy.Start()
 	return err
 }
 
@@ -78,6 +81,7 @@ func (bt *BTServer) Disconnect() {
 		bt.client = nil
 		utils.FreeOSMemGC()
 	}
+	proxy.Stop()
 }
 
 func (bt *BTServer) configure(ctx context.Context) {

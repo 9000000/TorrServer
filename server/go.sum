@@ -824,6 +824,8 @@ github.com/tinylib/msgp v1.1.0/go.mod h1:+d+yLhGm8mzTaHzB+wgMYrodPfmZrzkirds8fDW
 github.com/tinylib/msgp v1.1.2/go.mod h1:+d+yLhGm8mzTaHzB+wgMYrodPfmZrzkirds8fDWklFE=
 github.com/tsynik/torrent v1.2.22 h1:J6Se1Tk4W6l7yew3Ykw1my3EfG75uUNTRUdA5XPtHVk=
 github.com/tsynik/torrent v1.2.22/go.mod h1:C5byvvOO9wEdqWHHkjSp2+AH9kinJ2r1Z4GhT1xkRdI=
+github.com/tsynik/tunsgo v0.0.7 h1:jIfk+bUZXGBox5MePXAfV2ZulZk63Lapy4RiAcNCge0=
+github.com/tsynik/tunsgo v0.0.7/go.mod h1:aaOLeXmDgb85h41oq2gwegQMpOfkPzErUDP0lqODYfE=
 github.com/tsynik/upnp v0.1.5 h1:2KXGBtY6MZHxq17p/N372Kr/0MJX3ADAimfvPcTpap8=
 github.com/tsynik/upnp v0.1.5/go.mod h1:NiwP/o2sXNehx/4DbRT78Itii9F13d7NUrdHcVlpPPs=
 github.com/tv42/httpunix v0.0.0-20150427012821-b75d8614f926/go.mod h1:9ESjWnEqriFuLhtthL60Sar/7RFoluCcXsuvEwTV5KM=
@@ -841,8 +843,6 @@ github.com/willf/bitset v1.1.10/go.mod h1:RjeCKbqT1RxIR/KWY6phxZiaY1IyutSBfGjNPy
 github.com/wlynxg/anet v0.0.3/go.mod h1:eay5PRQr7fIVAMbTbchTnO9gG65Hg/uYGdc7mguHxoA=
 github.com/wlynxg/anet v0.0.5 h1:J3VJGi1gvo0JwZ/P1/Yc/8p63SoW98B5dHkYDmpgvvU=
 github.com/wlynxg/anet v0.0.5/go.mod h1:eay5PRQr7fIVAMbTbchTnO9gG65Hg/uYGdc7mguHxoA=
-github.com/yourok/tunsgo v0.0.0-20260219202119-1a2c30d897ae h1:NgZ6sYcPOX+X7aT+5OWNU7ofWr2cb8LnD+t0Gb+e35g=
-github.com/yourok/tunsgo v0.0.0-20260219202119-1a2c30d897ae/go.mod h1:mvd+KKjWB4jup3VAIVdjKsKudsxG4JSDgf5L+gBtMLs=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=

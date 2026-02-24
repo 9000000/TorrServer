@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"net/http"
 	"server/proxy"
 
 	"github.com/anacrolix/torrent/metainfo"
@@ -29,7 +30,7 @@ func SetupRoute(route gin.IRouter) {
 	template.RouteWebPages(webPagesAuth)
 	authorized.GET("/stat", statPage)
 	authorized.GET("/magnets", getTorrents)
-	authorized.GET("/proxy", proxy.P2Proxy.GinHandler)
+	authorized.Any("/proxy/*url", proxyUrl)
 }
 
 // stat godoc
@@ -71,4 +72,12 @@ func getTorrents(c *gin.Context) {
 	}
 	http += "</div>"
 	c.Data(200, "text/html; charset=utf-8", []byte(http))
+}
+
+func proxyUrl(c *gin.Context) {
+	if proxy.P2Proxy != nil {
+		proxy.P2Proxy.GinHandler(c)
+		return
+	}
+	c.AbortWithStatus(http.StatusNotFound)
 }
