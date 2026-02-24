@@ -3,10 +3,9 @@ package proxy
 import (
 	"server/log"
 	"server/settings"
-	"server/version"
 
-	"github.com/yourok/tunsgo/opts"
-	"github.com/yourok/tunsgo/p2p"
+	"github.com/YouROK/tunsgo/opts"
+	"github.com/YouROK/tunsgo/p2p"
 )
 
 var (
@@ -14,17 +13,18 @@ var (
 )
 
 func Start() {
-	//TODO Сделать все настройки в btsets.go
 	if settings.BTsets.EnableProxy {
-		opts := opts.DefOptions()
-		ProtocolID := "/tunsgo/" + version.Version
-		RendezvousString := "tunsgo-peers-0008"
-		srv, err := p2p.NewP2PServer(ProtocolID, RendezvousString, opts)
+		cfg := opts.DefOptions()
+		var err error
+
+		cfg.Server.Port = settings.Args.Port
+		cfg.Hosts = settings.BTsets.ProxyHosts
+
+		P2Proxy, err = p2p.NewP2PServer(cfg)
 		if err != nil {
 			log.TLogln("Error starting P2PServer:", err)
 			return
 		}
-		P2Proxy = srv
 	}
 }
 
