@@ -152,7 +152,7 @@
     "FriendlyName": "Ім'я сервера DLNA",
     "FriendlyNameHint": "Залиште порожнім, щоб використовувати значення за промовчанням.",
     "JsonFile": "JSON файл",
-    "MobileAppSettings": "Установки моб. програми",
+    "MobileAppSettings": "Плеєри",
     "PeersListenPort": "Порт для вхідних з'єднань",
     "PeersListenPortHint": "1024 - 65535, 0 - авто",
     "PreloadCache": "Буфер попер. завантаження",
@@ -187,7 +187,7 @@
     "Tabs": {
       "Additional": "Додаткові",
       "AdditionalDisabled": "(включіть ПРО-режим)",
-      "App": "Плеєри",
+      "App": "Застосунок",
       "Main": "Основні"
     },
     "TorrentDisconnectTimeout": "Час очікування відключення торрента",
@@ -200,6 +200,7 @@
     "UseInfuseHint": "Додати кнопку програвача Infuse до списку торрент-контенту",
     "UseVLC": "Пропонувати відкрити відео у VLC",
     "UseVLCHint": "Додати кнопку програвача VLC до списку торрент-контенту",
+    "UseVLCDesktopHintPrefix": "На ПК потрібен",
     "UseIINA": "Пропонувати відкрити відео в IINA",
     "UseIINAHint": "Додати кнопку програвача IINA до списку торрент-контенту (тільки macOS)",
     "ViewedHistoryStorage": "Збереження історії переглядів:",

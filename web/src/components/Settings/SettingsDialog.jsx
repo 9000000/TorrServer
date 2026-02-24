@@ -7,14 +7,12 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { clearTMDBCache } from 'components/Add/helpers'
 import AppBar from '@material-ui/core/AppBar'
-import Tabs from '@material-ui/core/Tabs'
-import Tab from '@material-ui/core/Tab'
 import SwipeableViews from 'react-swipeable-views'
 import CircularProgress from '@material-ui/core/CircularProgress'
 import { StyledDialog } from 'style/CustomMaterialUiStyles'
 import useOnStandaloneAppOutsideClick from 'utils/useOnStandaloneAppOutsideClick'
 
-import { SettingsHeader, FooterSection, Content } from './style'
+import { SettingsHeader, FooterSection, Content, StyledTabs, StyledTab } from './style'
 import defaultSettings from './defaultSettings'
 import { a11yProps, TabPanel } from './tabComponents'
 import PrimarySettingsComponent from './PrimarySettingsComponent'
@@ -78,6 +76,9 @@ export default function SettingsDialog({ handleClose }) {
       else sets[id] = Boolean(checked)
     } else if (type === 'url' || type === 'text') {
       sets[id] = value
+    } else if (!type && value !== undefined) {
+      // Fallback for custom handlers that don't provide type (e.g., ProxyHosts array)
+      sets[id] = value
     }
     setSettings(sets)
   }
@@ -118,32 +119,31 @@ export default function SettingsDialog({ handleClose }) {
       </SettingsHeader>
 
       <AppBar position='static' color='default'>
-        <Tabs
+        <StyledTabs
           value={selectedTab}
           onChange={handleChange}
           indicatorColor='secondary'
           textColor='secondary'
-          variant='fullWidth'
+          variant='scrollable'
+          scrollButtons='auto'
         >
-          <Tab label={t('SettingsDialog.Tabs.Main')} {...a11yProps(0)} />
+          <StyledTab label={t('SettingsDialog.Tabs.Main')} {...a11yProps(0)} />
 
-          <Tab
+          <StyledTab
             disabled={!isProMode}
             label={
               <>
-                <div>{t('SettingsDialog.Tabs.Additional')}</div>
-                {!isProMode && <div style={{ fontSize: '9px' }}>{t('SettingsDialog.Tabs.AdditionalDisabled')}</div>}
+                <span>{t('SettingsDialog.Tabs.Additional')}</span>
+                {!isProMode && <span className='disabled-hint'>{t('SettingsDialog.Tabs.AdditionalDisabled')}</span>}
               </>
             }
             {...a11yProps(1)}
           />
 
-          <Tab label={t('Search')} {...a11yProps(2)} />
+          <StyledTab label={t('Search')} {...a11yProps(2)} />
 
-          <Tab label={t('TMDB.Settings')} {...a11yProps(3)} />
-
-          <Tab label={t('SettingsDialog.Tabs.App')} {...a11yProps(4)} />
-        </Tabs>
+          <StyledTab label={t('SettingsDialog.Tabs.App')} {...a11yProps(3)} />
+        </StyledTabs>
       </AppBar>
 
       <Content isLoading={!settings}>
@@ -179,9 +179,6 @@ export default function SettingsDialog({ handleClose }) {
 
               <TabPanel value={selectedTab} index={3} dir={direction}>
                 <TMDBSettings settings={settings} updateSettings={updateSettings} />
-              </TabPanel>
-
-              <TabPanel value={selectedTab} index={4} dir={direction}>
                 <MobileAppSettings
                   isVlcUsed={isVlcUsed}
                   setIsVlcUsed={setIsVlcUsed}
