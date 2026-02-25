@@ -1,0 +1,111 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        include:
+          - go_version: 'stable'
+            group: 'standard'
+          - go_version: '1.25'
+            group: 'android'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go_version }}
+          cache: true
+
+      - name: Install Dependencies
+        run: |
+          go mod download
+          # Установка swag для генерации доки
+          go install github.com/swaggo/swag/cmd/swag@latest
+
+      - name: Build Web and Docs
+        if: matrix.group == 'standard'
+        run: |
+          export NODE_OPTIONS=--openssl-legacy-provider
+          go run gen_web.go
+          cd server && ~/go/bin/swag init -g web/server.go
+
+      - name: Build Standard Platforms
+        if: matrix.group == 'standard'
+        run: |
+          LDFLAGS="-s -w -checklinkname=0"
+          FLAGS="-ldflags=$LDFLAGS -tags=nosqlite -trimpath"
+          mkdir -p dist
+          
+          # Linux
+          GOOS=linux GOARCH=amd64 go build $FLAGS -o dist/TorrServer-linux-amd64 ./cmd
+          GOOS=linux GOARCH=arm64 go build $FLAGS -o dist/TorrServer-linux-arm64 ./cmd
+          GOOS=linux GOARCH=arm GOARM=7 go build $FLAGS -o dist/TorrServer-linux-arm7 ./cmd
+          GOOS=linux GOARCH=arm GOARM=5 go build $FLAGS -o dist/TorrServer-linux-arm5 ./cmd
+          GOOS=linux GOARCH=386 go build $FLAGS -o dist/TorrServer-linux-386 ./cmd
+          
+          # Windows
+          GOOS=windows GOARCH=amd64 go build $FLAGS -o dist/TorrServer-windows-amd64.exe ./cmd
+          GOOS=windows GOARCH=386 go build $FLAGS -o dist/TorrServer-windows-386.exe ./cmd
+          
+          # Darwin
+          GOOS=darwin GOARCH=amd64 go build $FLAGS -o dist/TorrServer-darwin-amd64 ./cmd
+          GOOS=darwin GOARCH=arm64 go build $FLAGS -o dist/TorrServer-darwin-arm64 ./cmd
+          
+          # MIPS & Others
+          GOOS=linux GOARCH=mips GOMIPS=softfloat go build $FLAGS -o dist/TorrServer-linux-mips ./cmd
+          GOOS=linux GOARCH=mipsle GOMIPS=softfloat go build $FLAGS -o dist/TorrServer-linux-mipsle ./cmd
+          GOOS=linux GOARCH=riscv64 go build $FLAGS -o dist/TorrServer-linux-riscv64 ./cmd
+
+      - name: Build Android (Go 1.25)
+        if: matrix.group == 'android'
+        run: |
+          # Для Android тоже нужен сгенерированный веб
+          go run gen_web.go
+          
+          LDFLAGS="-s -w -checklinkname=0"
+          FLAGS="-ldflags=$LDFLAGS -tags=nosqlite -trimpath"
+          mkdir -p dist
+          
+          # Используем предустановленный NDK в Ubuntu 22.04
+          export NDK_TOOLCHAIN="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64"
+          
+          # Сборка Android платформ с CGO
+          CC=$NDK_TOOLCHAIN/bin/armv7a-linux-androideabi21-clang CGO_ENABLED=1 GOOS=android GOARCH=arm GOARM=7 go build $FLAGS -o dist/TorrServer-android-arm7 ./cmd
+          CC=$NDK_TOOLCHAIN/bin/aarch64-linux-android21-clang CGO_ENABLED=1 GOOS=android GOARCH=arm64 go build $FLAGS -o dist/TorrServer-android-arm64 ./cmd
+          CC=$NDK_TOOLCHAIN/bin/i686-linux-android21-clang CGO_ENABLED=1 GOOS=android GOARCH=386 go build $FLAGS -o dist/TorrServer-android-386 ./cmd
+          CC=$NDK_TOOLCHAIN/bin/x86_64-linux-android21-clang CGO_ENABLED=1 GOOS=android GOARCH=amd64 go build $FLAGS -o dist/TorrServer-android-amd64 ./cmd
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.group }}
+          path: dist/*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Важно для создания релиза
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-dist
+          merge-multiple: true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: all-dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
