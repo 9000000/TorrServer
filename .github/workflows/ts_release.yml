@@ -42,6 +42,7 @@ jobs:
         run: |
           LDFLAGS="-s -w -checklinkname=0"
           mkdir -p dist
+          cd server
           
           # Linux
           GOOS=linux GOARCH=amd64 go build -ldflags="$LDFLAGS" -tags=nosqlite -trimpath -o dist/TorrServer-linux-amd64 ./cmd
