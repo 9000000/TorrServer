@@ -5,7 +5,7 @@ import (
 	"runtime/debug"
 )
 
-const Version = "MatriX.139.1"
+const Version = "MatriX.140"
 
 func GetTorrentVersion() string {
 	bi, ok := debug.ReadBuildInfo()
@@ -17,9 +17,9 @@ func GetTorrentVersion() string {
 		if dep.Path == "github.com/anacrolix/torrent" {
 			if dep.Replace != nil {
 				return dep.Replace.Version
-			} else {
-				return dep.Version
 			}
+
+			return dep.Version
 		}
 	}
 	return ""
