@@ -1,6 +1,6 @@
 module server
 
-go 1.25.5
+go 1.25
 
 replace (
 	github.com/YouROK/tunsgo v0.0.6 => github.com/tsynik/tunsgo v0.0.7
@@ -9,6 +9,7 @@ replace (
 )
 
 require (
+	github.com/YouROK/tunsgo v0.0.8
 	github.com/agnivade/levenshtein v1.2.1
 	github.com/alexflint/go-arg v1.6.0
 	github.com/anacrolix/dms v1.7.2
@@ -101,7 +102,6 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
-	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/ipfs/boxo v0.36.0 // indirect
@@ -122,7 +122,6 @@ require (
 	github.com/libp2p/go-libp2p-asn-util v0.4.1 // indirect
 	github.com/libp2p/go-libp2p-kad-dht v0.38.0 // indirect
 	github.com/libp2p/go-libp2p-kbucket v0.8.0 // indirect
-	github.com/libp2p/go-libp2p-pubsub v0.15.0 // indirect
 	github.com/libp2p/go-libp2p-record v0.3.1 // indirect
 	github.com/libp2p/go-libp2p-routing-helpers v0.7.5 // indirect
 	github.com/libp2p/go-msgio v0.3.0 // indirect
