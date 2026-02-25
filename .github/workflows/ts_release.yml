@@ -98,12 +98,19 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: all-dist
+          path: ./all-dist
           merge-multiple: true
+
+      - name: Debug - List files
+        run: |
+          echo "Listing files to be uploaded:"
+          ls -R ./all-dist
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: all-dist/*
+          files: ./all-dist/*
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
