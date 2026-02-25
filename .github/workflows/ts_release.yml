@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    env:
+      NODE_OPTIONS: --openssl-legacy-provider
     strategy:
       matrix:
         include:
@@ -32,7 +34,6 @@ jobs:
       - name: Build Web and Docs
         if: matrix.group == 'standard'
         run: |
-          export NODE_OPTIONS=--openssl-legacy-provider
           go run gen_web.go
           cd server && ~/go/bin/swag init -g web/server.go
 
