@@ -26,11 +26,8 @@ jobs:
           go-version: ${{ matrix.go_version }}
           cache: true
 
-      - name: Install Dependencies
-        run: |
-          go mod download
-          # Установка swag для генерации доки
-          go install github.com/swaggo/swag/cmd/swag@latest
+      - name: Install Swag
+        run: go install github.com/swaggo/swag/cmd/swag@latest
 
       - name: Build Web and Docs
         if: matrix.group == 'standard'
@@ -57,29 +54,30 @@ jobs:
           GOOS=windows GOARCH=amd64 go build $FLAGS -o dist/TorrServer-windows-amd64.exe ./cmd
           GOOS=windows GOARCH=386 go build $FLAGS -o dist/TorrServer-windows-386.exe ./cmd
           
-          # Darwin
+          # Darwin (Mac)
           GOOS=darwin GOARCH=amd64 go build $FLAGS -o dist/TorrServer-darwin-amd64 ./cmd
           GOOS=darwin GOARCH=arm64 go build $FLAGS -o dist/TorrServer-darwin-arm64 ./cmd
           
-          # MIPS & Others
+          # FreeBSD
+          GOOS=freebsd GOARCH=amd64 go build $FLAGS -o dist/TorrServer-freebsd-amd64 ./cmd
+          GOOS=freebsd GOARCH=arm GOARM=7 go build $FLAGS -o dist/TorrServer-freebsd-arm7 ./cmd
+          
+          # MIPS & RISC-V
           GOOS=linux GOARCH=mips GOMIPS=softfloat go build $FLAGS -o dist/TorrServer-linux-mips ./cmd
           GOOS=linux GOARCH=mipsle GOMIPS=softfloat go build $FLAGS -o dist/TorrServer-linux-mipsle ./cmd
+          GOOS=linux GOARCH=mips64 GOMIPS64=softfloat go build $FLAGS -o dist/TorrServer-linux-mips64 ./cmd
+          GOOS=linux GOARCH=mips64le GOMIPS64=softfloat go build $FLAGS -o dist/TorrServer-linux-mips64le ./cmd
           GOOS=linux GOARCH=riscv64 go build $FLAGS -o dist/TorrServer-linux-riscv64 ./cmd
 
       - name: Build Android (Go 1.25)
         if: matrix.group == 'android'
         run: |
-          # Для Android тоже нужен сгенерированный веб
           go run gen_web.go
-          
           LDFLAGS="-s -w -checklinkname=0"
           FLAGS="-ldflags=$LDFLAGS -tags=nosqlite -trimpath"
           mkdir -p dist
-          
-          # Используем предустановленный NDK в Ubuntu 22.04
           export NDK_TOOLCHAIN="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64"
           
-          # Сборка Android платформ с CGO
           CC=$NDK_TOOLCHAIN/bin/armv7a-linux-androideabi21-clang CGO_ENABLED=1 GOOS=android GOARCH=arm GOARM=7 go build $FLAGS -o dist/TorrServer-android-arm7 ./cmd
           CC=$NDK_TOOLCHAIN/bin/aarch64-linux-android21-clang CGO_ENABLED=1 GOOS=android GOARCH=arm64 go build $FLAGS -o dist/TorrServer-android-arm64 ./cmd
           CC=$NDK_TOOLCHAIN/bin/i686-linux-android21-clang CGO_ENABLED=1 GOOS=android GOARCH=386 go build $FLAGS -o dist/TorrServer-android-386 ./cmd
@@ -95,7 +93,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Важно для создания релиза
+      contents: write
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
