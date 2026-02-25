@@ -34,7 +34,7 @@ jobs:
       - name: Build Web and Docs
         if: matrix.group == 'standard'
         run: |
-          go run gen_web.go
+          GO111MODULE=off go run gen_web.go
           cd server && ~/go/bin/swag init -g web/server.go
 
       - name: Build Standard Platforms
@@ -72,7 +72,7 @@ jobs:
       - name: Build Android (Go 1.25)
         if: matrix.group == 'android'
         run: |
-          go run gen_web.go
+          GO111MODULE=off go run gen_web.go
           LDFLAGS="-s -w -checklinkname=0"
           mkdir -p dist
           export NDK_TOOLCHAIN="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64"
