@@ -28,6 +28,9 @@ jobs:
           go-version: ${{ matrix.go_version }}
           cache: true
 
+      - name: Set version from tag
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
       - name: Install Swag
         run: go install github.com/swaggo/swag/cmd/swag@latest
 
@@ -40,7 +43,7 @@ jobs:
       - name: Build Standard Platforms
         if: matrix.group == 'standard'
         run: |
-          LDFLAGS="-s -w -checklinkname=0"
+          LDFLAGS="-s -w -checklinkname=0 -X server/version.Version=${{ env.VERSION }}"
           mkdir -p "${{ github.workspace }}/dist"
           cd server
           
@@ -75,7 +78,7 @@ jobs:
         run: |
           go run gen_web.go
           
-          LDFLAGS="-s -w -checklinkname=0"
+          LDFLAGS="-s -w -checklinkname=0 -X server/version.Version=${{ env.VERSION }}"
           mkdir -p "${{ github.workspace }}/dist"
           export NDK_TOOLCHAIN="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64"
           cd server
