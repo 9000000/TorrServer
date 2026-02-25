@@ -34,8 +34,6 @@ jobs:
       - name: Build Web and Docs
         if: matrix.group == 'standard'
         run: |
-          go mod init torrserver-web-build
-          go mod tidy
           go run gen_web.go
           cd server && ~/go/bin/swag init -g web/server.go
 
@@ -74,12 +72,11 @@ jobs:
       - name: Build Android (Go 1.25)
         if: matrix.group == 'android'
         run: |
-          go mod init torrserver-web-build
-          go mod tidy
           go run gen_web.go
           LDFLAGS="-s -w -checklinkname=0"
           mkdir -p dist
           export NDK_TOOLCHAIN="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64"
+          cd server
           
           CC=$NDK_TOOLCHAIN/bin/armv7a-linux-androideabi21-clang CGO_ENABLED=1 GOOS=android GOARCH=arm GOARM=7 go build -ldflags="$LDFLAGS" -tags=nosqlite -trimpath -o dist/TorrServer-android-arm7 ./cmd
           CC=$NDK_TOOLCHAIN/bin/aarch64-linux-android21-clang CGO_ENABLED=1 GOOS=android GOARCH=arm64 go build -ldflags="$LDFLAGS" -tags=nosqlite -trimpath -o dist/TorrServer-android-arm64 ./cmd
