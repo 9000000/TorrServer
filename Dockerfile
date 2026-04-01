@@ -1,5 +1,5 @@
 ### FRONT BUILD START ###
-FROM --platform=$BUILDPLATFORM node:16-alpine AS front
+FROM --platform=$BUILDPLATFORM node:20-alpine AS front
 
 WORKDIR /app
 
@@ -69,7 +69,9 @@ ENV GODEBUG=madvdontneed=1
 COPY --from=compressed ./torrserver /usr/bin/torrserver
 COPY ./docker-entrypoint.sh /docker-entrypoint.sh
 
-RUN apk add --no-cache --update ffmpeg
+RUN apk add --no-cache --update ffmpeg \
+    && chmod +x /docker-entrypoint.sh \
+    && sed -i 's/\r$//' /docker-entrypoint.sh
 
-CMD /docker-entrypoint.sh
+CMD ["/bin/sh", "/docker-entrypoint.sh"]
 ### BUILD MAIN IMAGE end ###

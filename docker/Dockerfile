@@ -1,6 +1,9 @@
 FROM alpine
-LABEL maintainer "yourok"
-RUN apk add --no-cache wget
+LABEL maintainer "matrix37"
 COPY start.sh /start.sh
-ENTRYPOINT /start.sh
+RUN apk add --no-cache wget \
+    && chmod +x /start.sh \
+    && sed -i 's/\r$//' /start.sh
+
+ENTRYPOINT ["/bin/sh", "/start.sh"]
 

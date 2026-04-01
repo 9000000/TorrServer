@@ -1,11 +1,11 @@
 # TorrServer Telegram Bot
 
-[![GitHub License](https://img.shields.io/github/license/YouROK/TorrServer)](https://github.com/YouROK/TorrServer/blob/master/LICENSE)
-[![TorrServer Integrated](https://img.shields.io/badge/TorrServer-integrated-blue)](https://github.com/YouROK/TorrServer)
+[![GitHub License](https://img.shields.io/github/license/matrix37/TorrServer)](https://github.com/matrix37/TorrServer/blob/master/LICENSE)
+[![TorrServer Integrated](https://img.shields.io/badge/TorrServer-integrated-blue)](https://github.com/matrix37/TorrServer)
 
 ## Introduction
 
-Telegram bot for managing [TorrServer](https://github.com/YouROK/TorrServer) — add torrents, stream, search, and control the server directly from Telegram.
+Telegram bot for managing [TorrServer](https://github.com/matrix37/TorrServer) — add torrents, stream, search, and control the server directly from Telegram.
 
 ## Features
 
