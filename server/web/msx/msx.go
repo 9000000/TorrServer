@@ -18,7 +18,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const base, files = "tsmsx.matrix37.ru", "media"
+const base, files = "tsmsx.yourok.ru", "media"
 
 var param = "menu:request:interaction:{SERVER}@{PREFIX}" + base + "/start.html"
 
