@@ -1,5 +1,5 @@
 FROM alpine
-LABEL maintainer "matrix37"
+LABEL maintainer "9000000"
 COPY start.sh /start.sh
 RUN apk add --no-cache wget \
     && chmod +x /start.sh \
