@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"net/url"
 
 	"server/rutor"
 
@@ -12,6 +13,7 @@ import (
 
 	sets "server/settings"
 	"server/torr"
+	"server/torr/utils"
 )
 
 // Action: get, set, def
@@ -60,6 +62,47 @@ func settings(c *gin.Context) {
 		rutor.Stop()
 		c.Status(200)
 		return
+	} else if req.Action == "refresh_proxy" {
+		if sets.BTsets.ProxyListURL == "" {
+			c.AbortWithError(http.StatusBadRequest, errors.New("ProxyListURL is empty"))
+			return
+		}
+		newProxy, err := utils.FetchRandomProxy(sets.BTsets.ProxyListURL)
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, errors.Wrap(err, "Failed to fetch proxy"))
+			return
+		}
+		if newProxy == "" {
+			c.AbortWithError(http.StatusNotFound, errors.New("No valid proxies found in list"))
+			return
+		}
+		
+		sets.BTsets.BitTorrentProxyURL = newProxy
+		
+		// Restart torrent client with new proxy
+		torr.SetSettings(sets.BTsets)
+		dlna.Stop()
+		if sets.BTsets.EnableDLNA {
+			dlna.Start()
+		}
+		rutor.Stop()
+		rutor.Start()
+
+		// Return settings with masked proxy URL for security
+		masked := maskProxyURL(newProxy)
+		c.JSON(200, gin.H{"BitTorrentProxyURL": masked})
+		return
 	}
 	c.AbortWithError(http.StatusBadRequest, errors.New("action is empty"))
+}
+
+// maskProxyURL hides credentials from a proxy URL, keeping only scheme://host:port
+func maskProxyURL(rawURL string) string {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	// Rebuild without userinfo
+	masked := parsed.Scheme + "://" + parsed.Host
+	return masked
 }

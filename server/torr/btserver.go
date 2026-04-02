@@ -192,7 +192,14 @@ func (bt *BTServer) configure(ctx context.Context) {
 }
 
 func (bt *BTServer) configureProxy() error {
-	proxyURL := settings.Args.ProxyURL
+	if !settings.BTsets.EnableBTProxy {
+		return nil // BitTorrent Proxy explicitly disabled in UI
+	}
+
+	proxyURL := settings.BTsets.BitTorrentProxyURL
+	if proxyURL == "" {
+		proxyURL = settings.Args.ProxyURL
+	}
 
 	if proxyURL == "" {
 		return nil // No proxy configured
