@@ -253,9 +253,3 @@ echo ""
 echo "========================================="
 echo "  ✅ All builds completed successfully!"
 echo "========================================="
-
-# Build docker if available
-if [[ -f "${ROOT}/docker/lite/makedocker.sh" ]]; then
-  cd "${ROOT}/docker/lite" || exit 1
-  ./makedocker.sh
-fi
