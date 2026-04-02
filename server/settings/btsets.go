@@ -91,6 +91,7 @@ type BTSets struct {
 	EnableBTProxy      bool
 	BitTorrentProxyURL string
 	ProxyListURL       string
+	ProxyTypeFilter    string
 }
 
 func (v *BTSets) String() string {

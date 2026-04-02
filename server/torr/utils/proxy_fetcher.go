@@ -14,7 +14,8 @@ import (
 
 // FetchRandomProxy loads a TXT list from the given URL and selects one random non-empty line.
 // Lines starting with '#' are treated as comments and ignored.
-func FetchRandomProxy(urlStr string) (string, error) {
+// If filter is provided, it will only select proxies containing that substring.
+func FetchRandomProxy(urlStr string, filter string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
@@ -38,23 +39,27 @@ func FetchRandomProxy(urlStr string) (string, error) {
 		return "", fmt.Errorf("read proxy list body: %w", err)
 	}
 
+	filter = strings.ToLower(filter)
+
 	lines := strings.Split(string(bodyBytes), "\n")
 	var validProxies []string
 	for _, l := range lines {
 		l = strings.TrimSpace(l)
 		// Only keep non-empty, non-comment lines that look like valid URIs
 		if l != "" && !strings.HasPrefix(l, "#") && strings.Contains(l, "://") && !strings.Contains(l, "<") {
-			validProxies = append(validProxies, l)
+			if filter == "" || strings.Contains(strings.ToLower(l), filter) {
+				validProxies = append(validProxies, l)
+			}
 		}
 	}
 
 	if len(validProxies) == 0 {
-		return "", fmt.Errorf("no valid proxies found in list from %s", urlStr)
+		return "", fmt.Errorf("no valid proxies found in list from %s (filter: %s)", urlStr, filter)
 	}
 
 	selected := validProxies[rand.IntN(len(validProxies))]
 
-	log.TLogln("Fetched proxy list:", len(validProxies), "proxies available. Selected new proxy.")
+	log.TLogln("Fetched proxy list:", len(validProxies), "proxies available with filter:", filter)
 
 	return selected, nil
 }
