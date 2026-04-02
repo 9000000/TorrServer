@@ -69,7 +69,10 @@ export default function SecondarySettingsComponent({ settings, inputForm }) {
     SslKey,
     ShowFSActiveTorr,
     EnableProxy,
+    EnableBTProxy,
     ProxyHosts,
+    BitTorrentProxyURL,
+    ProxyListURL,
   } = settings || {}
 
   // Local state for ProxyHosts text input
@@ -160,6 +163,59 @@ export default function SecondarySettingsComponent({ settings, inputForm }) {
       setLoading(false)
     }
   }
+
+  // Handle Refresh Proxy Action
+  const handleRefreshProxy = async () => {
+    setLoading(true)
+    setStorageStatus({ message: t('SettingsDialog.RefreshingProxy', 'Refreshing Proxy...'), type: 'info' })
+
+    try {
+      const response = await fetch(getApiUrl('/settings'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'refresh_proxy' }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to refresh proxy')
+      }
+
+      const result = await response.json()
+      // Update parent state with the masked proxy URL from backend
+      if (result.BitTorrentProxyURL) {
+        inputForm({ target: { id: 'BitTorrentProxyURL', value: result.BitTorrentProxyURL } })
+      }
+
+      setStorageStatus({
+        message: t('SettingsDialog.ProxyRefreshed', 'Proxy Refreshed: ') + (result.BitTorrentProxyURL || ''),
+        type: 'success',
+      })
+    } catch (error) {
+      setStorageStatus({
+        message: t('SettingsDialog.ProxyRefreshError', 'Error refreshing proxy: ') + error.message,
+        type: 'error',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Mask proxy username/password
+  const maskedProxyUrl = useMemo(() => {
+    if (!BitTorrentProxyURL) return ''
+    try {
+      const urlInfo = new URL(BitTorrentProxyURL)
+      // Only keep protocol, host, and port
+      return `${urlInfo.protocol}//${urlInfo.host}`
+    } catch (e) {
+      // In case URL is invalid, return bare string if it doesn't contain @, else mask all before @
+      const passParts = BitTorrentProxyURL.split('@')
+      if (passParts.length > 1) {
+        return `***@${passParts[passParts.length - 1]}`
+      }
+      return BitTorrentProxyURL
+    }
+  }, [BitTorrentProxyURL])
 
   return (
     <SecondarySettingsContent>
@@ -452,6 +508,54 @@ export default function SecondarySettingsComponent({ settings, inputForm }) {
           </StatusMessage>
         )}
       </Box>
+
+      {/* BitTorrent Proxy (from List) */}
+      <SettingSectionLabel style={{ marginTop: '20px' }}>BitTorrent Proxy</SettingSectionLabel>
+      <FormControlLabel
+        control={
+          <Switch
+            checked={EnableBTProxy || false}
+            onChange={inputForm}
+            id='EnableBTProxy'
+            color='secondary'
+          />
+        }
+        label={t('SettingsDialog.EnableBTProxy', 'Enable BitTorrent Proxy')}
+      />
+      <TextField
+        onChange={inputForm}
+        margin='normal'
+        id='ProxyListURL'
+        label={t('SettingsDialog.ProxyListURL', 'Proxy List URL (TXT)')}
+        helperText={t('SettingsDialog.ProxyListURLHint', 'Enter raw file URL (e.g., https://raw.githubusercontent.com/.../data.txt).')}
+        value={ProxyListURL || ''}
+        type='url'
+        variant='outlined'
+        fullWidth
+      />
+
+      <Box mt={2} mb={2} display="flex" alignItems="center" gap="16px">
+        <TextField
+          margin='normal'
+          id='BitTorrentProxyURL'
+          label={t('SettingsDialog.CurrentProxy', 'Current Proxy')}
+          value={maskedProxyUrl}
+          type='text'
+          variant='outlined'
+          disabled
+          style={{ flexGrow: 1, marginTop: 0, marginBottom: 0 }}
+        />
+        <Button
+          variant='contained'
+          color='primary'
+          onClick={handleRefreshProxy}
+          disabled={loading || !ProxyListURL}
+          startIcon={loading ? <CircularProgress size={20} /> : null}
+        >
+          {t('Refresh', 'Refresh')}
+        </Button>
+      </Box>
+
       {/* ProxyP2P */}
       <SettingSectionLabel style={{ marginTop: '20px' }}>{t('Proxy')}</SettingSectionLabel>
       <FormGroup>
@@ -473,9 +577,9 @@ export default function SecondarySettingsComponent({ settings, inputForm }) {
             inputValue === ''
               ? []
               : inputValue
-                  .split(',')
-                  .map(s => s.trim())
-                  .filter(s => s !== '')
+                .split(',')
+                .map(s => s.trim())
+                .filter(s => s !== '')
 
           inputForm({
             target: {

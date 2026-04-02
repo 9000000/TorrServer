@@ -86,6 +86,11 @@ type BTSets struct {
 	// P2P Proxy
 	EnableProxy bool
 	ProxyHosts  []string
+
+	// BitTorrent Proxy
+	EnableBTProxy      bool
+	BitTorrentProxyURL string
+	ProxyListURL       string
 }
 
 func (v *BTSets) String() string {
