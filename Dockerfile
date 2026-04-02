@@ -30,10 +30,11 @@ WORKDIR /opt/src
 
 ARG TARGETARCH
 ARG BUILDARCH
+ARG BUILDOS
 
 # Build torrserver
 RUN apk add --update g++ \
-    && GOARCH=$BUILDARCH go run gen_web.go \
+    && CGO_ENABLED=0 GOOS=$BUILDOS GOARCH=$BUILDARCH go run gen_web.go \
     && cd server \
     && go mod tidy \
     && go clean -i -r -cache \

@@ -1,23 +1,28 @@
+#28 2.784 Executing busybox-1.37.0-r30.trigger
+#28 2.801 OK: 265.1 MiB in 32 packages
 #28 ...
-#27 [linux/amd64->arm/v7 builder 5/5] RUN apk add --update g++     && go run gen_web.go     && cd server     && go mod tidy     && go clean -i -r -cache     && go build -ldflags '-w -s' --o "torrserver" ./cmd
-#27 15.22 fork/exec /tmp/go-build1906633730/b001/exe/gen_web: exec format error
+
+#27 [linux/amd64->arm64 builder 5/5] RUN apk add --update g++     && go run gen_web.go     && cd server     && go mod tidy     && go clean -i -r -cache     && go build -ldflags '-w -s' --o "torrserver" ./cmd
+#27 14.92 fork/exec /tmp/go-build2921990068/b001/exe/gen_web: exec format error
 #27 ERROR: process "/bin/sh -c apk add --update g++     && go run gen_web.go     && cd server     && go mod tidy     && go clean -i -r -cache     && go build -ldflags '-w -s' --o \"torrserver\" ./cmd" did not complete successfully: exit code: 1
+
+#26 [linux/amd64->arm/v7 builder 5/5] RUN apk add --update g++     && go run gen_web.go     && cd server     && go mod tidy     && go clean -i -r -cache     && go build -ldflags '-w -s' --o "torrserver" ./cmd
+#26 CANCELED
+
 #28 [linux/amd64 builder 5/5] RUN apk add --update g++     && go run gen_web.go     && cd server     && go mod tidy     && go clean -i -r -cache     && go build -ldflags '-w -s' --o "torrserver" ./cmd
 #28 CANCELED
-#26 [linux/amd64->arm64 builder 5/5] RUN apk add --update g++     && go run gen_web.go     && cd server     && go mod tidy     && go clean -i -r -cache     && go build -ldflags '-w -s' --o "torrserver" ./cmd
-#26 CANCELED
 ------
- > [linux/amd64->arm/v7 builder 5/5] RUN apk add --update g++     && go run gen_web.go     && cd server     && go mod tidy     && go clean -i -r -cache     && go build -ldflags '-w -s' --o "torrserver" ./cmd:
-0.709 ( 9/15) Installing gmp (6.3.0-r4)
-0.713 (10/15) Installing isl26 (0.26-r1)
-0.727 (11/15) Installing mpfr4 (4.2.2-r0)
-0.737 (12/15) Installing mpc1 (1.3.1-r1)
-0.739 (13/15) Installing gcc (15.2.0-r2)
-1.933 (14/15) Installing musl-dev (1.2.5-r21)
-2.023 (15/15) Installing g++ (15.2.0-r2)
-2.328 Executing busybox-1.37.0-r30.trigger
-2.343 OK: 265.1 MiB in 32 packages
-15.22 fork/exec /tmp/go-build1906633730/b001/exe/gen_web: exec format error
+ > [linux/amd64->arm64 builder 5/5] RUN apk add --update g++     && go run gen_web.go     && cd server     && go mod tidy     && go clean -i -r -cache     && go build -ldflags '-w -s' --o "torrserver" ./cmd:
+1.069 ( 9/15) Installing gmp (6.3.0-r4)
+1.091 (10/15) Installing isl26 (0.26-r1)
+1.123 (11/15) Installing mpfr4 (4.2.2-r0)
+1.146 (12/15) Installing mpc1 (1.3.1-r1)
+1.165 (13/15) Installing gcc (15.2.0-r2)
+2.339 (14/15) Installing musl-dev (1.2.5-r21)
+2.430 (15/15) Installing g++ (15.2.0-r2)
+2.743 Executing busybox-1.37.0-r30.trigger
+2.757 OK: 265.1 MiB in 32 packages
+14.92 fork/exec /tmp/go-build2921990068/b001/exe/gen_web: exec format error
 ------
 Dockerfile:25
 --------------------
