@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       NODE_OPTIONS: --openssl-legacy-provider
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     strategy:
       matrix:
         include:
@@ -27,6 +28,7 @@ jobs:
         with:
           go-version: ${{ matrix.go_version }}
           cache: true
+          cache-dependency-path: server/go.sum
 
       - name: Set version from tag
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
