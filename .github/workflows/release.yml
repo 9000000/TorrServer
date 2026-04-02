@@ -31,7 +31,7 @@ on:
         type: boolean
         default: false
       windows:
-        description: "🪟 Windows (AMD64 + 386)"
+        description: "🪟 Windows (AMD64)"
         required: false
         type: boolean
         default: false
@@ -51,7 +51,7 @@ on:
         type: boolean
         default: true
       other_platforms:
-        description: "📦 Other (Linux ARM5/386/MIPS/RISCV64, FreeBSD, Android x86)"
+        description: "📦 Other (Linux ARM5/MIPS/RISCV64, FreeBSD, Android x86_64)"
         required: false
         type: boolean
         default: false

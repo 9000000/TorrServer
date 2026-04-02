@@ -44,7 +44,6 @@ fi
 # Windows
 if should_build "${BUILD_WINDOWS}"; then
   PLATFORMS+=('windows/amd64')
-  PLATFORMS+=('windows/386')
 fi
 
 # macOS
@@ -56,7 +55,6 @@ fi
 # Other platforms (ARM5, 386, MIPS, RISCV64, FreeBSD)
 if should_build "${BUILD_OTHER}"; then
   PLATFORMS+=('linux/arm5')
-  PLATFORMS+=('linux/386')
   PLATFORMS+=('linux/mips')
   PLATFORMS+=('linux/mipsle')
   PLATFORMS+=('linux/mips64')
@@ -79,7 +77,6 @@ fi
 
 # Other Android platforms (386, amd64) - included in "other" group
 if should_build "${BUILD_OTHER}"; then
-  ANDROID_COMPILERS+=("386:i686-linux-android21-clang")
   ANDROID_COMPILERS+=("amd64:x86_64-linux-android21-clang")
 fi
 
