@@ -1,1 +1,43 @@
-1
+1#5 DONE 0.0s
+#6 [linux/arm/v7 internal] load metadata for docker.io/library/ubuntu:latest
+#6 ...
+#7 [linux/386 internal] load metadata for docker.io/library/ubuntu:latest
+#7 ERROR: no match for platform in manifest: not found
+#8 [linux/amd64 internal] load metadata for docker.io/library/ubuntu:latest
+#8 CANCELED
+#9 [linux/amd64 internal] load metadata for docker.io/library/golang:1.26.0-alpine
+#9 CANCELED
+#10 [linux/arm64 internal] load metadata for docker.io/library/ubuntu:latest
+#10 CANCELED
+#6 [linux/arm/v7 internal] load metadata for docker.io/library/ubuntu:latest
+#6 CANCELED
+#11 [linux/amd64 internal] load metadata for docker.io/library/node:20-alpine
+#11 CANCELED
+------
+ > [linux/386 internal] load metadata for docker.io/library/ubuntu:latest:
+------
+Dockerfile:15
+--------------------
+  13 |     
+  14 |     ### BUILD TORRSERVER MULTIARCH START ###
+  15 | >>> FROM --platform=$BUILDPLATFORM golang:1.26.0-alpine AS builder
+  16 |     
+  17 |     COPY . /opt/src
+--------------------
+Dockerfile:2
+--------------------
+   1 |     ### FRONT BUILD START ###
+   2 | >>> FROM --platform=$BUILDPLATFORM node:20-alpine AS front
+   3 |     
+   4 |     WORKDIR /app
+--------------------
+Dockerfile:35
+--------------------
+  33 |     
+  34 |     ### UPX COMPRESSING START ###
+  35 | >>> FROM ubuntu AS compressed
+  36 |     
+  37 |     COPY --from=builder /opt/src/server/torrserver ./torrserver
+--------------------
+ERROR: failed to build: failed to solve: ubuntu: failed to resolve source metadata for docker.io/library/ubuntu:latest: no match for platform in manifest: not found
+Error: Process completed with exit code 1.
