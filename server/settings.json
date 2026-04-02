@@ -23,6 +23,7 @@
     "PreloadCache": 21,
     "ProxyHosts": null,
     "ProxyListURL": "https://raw.githubusercontent.com/proxifly/free-proxy-list/refs/heads/main/proxies/countries/US/data.txt",
+    "ProxyTypeFilter": "",
     "ReaderReadAHead": 95,
     "RemoveCacheOnDrop": false,
     "ResponsiveMode": true,
