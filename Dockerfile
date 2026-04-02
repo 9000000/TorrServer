@@ -21,7 +21,7 @@ RUN yarn run build
 
 
 ### BUILD TORRSERVER MULTIARCH START ###
-FROM --platform=$BUILDPLATFORM golang:1.26.0-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS builder
 
 COPY . /opt/src
 COPY --from=front /app/build /opt/src/web/build
@@ -44,11 +44,11 @@ RUN apk add --update g++ \
 
 
 ### UPX COMPRESSING START ###
-FROM ubuntu AS compressed
+FROM --platform=$BUILDPLATFORM alpine AS compressed
 
 COPY --from=builder /opt/src/server/torrserver ./torrserver
 
-RUN apt update && apt install -y upx-ucl && upx --best --lzma ./torrserver
+RUN apk add --no-cache upx && upx --best --lzma ./torrserver
 # Compress torrserver only for amd64 and arm64 no variant platforms
 # ARG TARGETARCH
 # ARG TARGETVARIANT
