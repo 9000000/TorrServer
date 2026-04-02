@@ -29,17 +29,15 @@ COPY --from=front /app/build /opt/src/web/build
 WORKDIR /opt/src
 
 ARG TARGETARCH
-
-# Step for multiarch build with docker buildx
-ENV GOARCH=$TARGETARCH
+ARG BUILDARCH
 
 # Build torrserver
 RUN apk add --update g++ \
-    && go run gen_web.go \
+    && GOARCH=$BUILDARCH go run gen_web.go \
     && cd server \
     && go mod tidy \
     && go clean -i -r -cache \
-    && go build -ldflags '-w -s' --o "torrserver" ./cmd
+    && GOARCH=$TARGETARCH go build -ldflags '-w -s' --o "torrserver" ./cmd
 ### BUILD TORRSERVER MULTIARCH END ###
 
 
