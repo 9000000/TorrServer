@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   CircularProgress,
+  FormControl,
   FormControlLabel,
   FormGroup,
   FormHelperText,
@@ -73,6 +74,7 @@ export default function SecondarySettingsComponent({ settings, inputForm }) {
     ProxyHosts,
     BitTorrentProxyURL,
     ProxyListURL,
+    ProxyTypeFilter,
   } = settings || {}
 
   // Local state for ProxyHosts text input
@@ -533,6 +535,25 @@ export default function SecondarySettingsComponent({ settings, inputForm }) {
         variant='outlined'
         fullWidth
       />
+
+      <Box mt={1} mb={2} display="flex" alignItems="center" gap="16px">
+        <FormControl variant='outlined' size="small" style={{ minWidth: '150px' }}>
+          <InputLabel id="proxy-type-filter-label">{t('SettingsDialog.ProxyTypeFilter', 'Filter Type')}</InputLabel>
+          <Select
+            labelId="proxy-type-filter-label"
+            id="ProxyTypeFilter"
+            name="ProxyTypeFilter"
+            value={ProxyTypeFilter || ''}
+            onChange={inputForm}
+            label={t('SettingsDialog.ProxyTypeFilter', 'Filter Type')}
+          >
+            <MenuItem value="">{t('All', 'All')}</MenuItem>
+            <MenuItem value="http">HTTP/HTTPS</MenuItem>
+            <MenuItem value="socks">SOCKS</MenuItem>
+          </Select>
+        </FormControl>
+        <FormHelperText>{t('SettingsDialog.ProxyTypeFilterHint', 'Filter by protocol when refreshing proxy.')}</FormHelperText>
+      </Box>
 
       <Box mt={2} mb={2} display="flex" alignItems="center" gap="16px">
         <TextField

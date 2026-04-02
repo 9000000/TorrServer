@@ -67,7 +67,7 @@ func settings(c *gin.Context) {
 			c.AbortWithError(http.StatusBadRequest, errors.New("ProxyListURL is empty"))
 			return
 		}
-		newProxy, err := utils.FetchRandomProxy(sets.BTsets.ProxyListURL)
+		newProxy, err := utils.FetchRandomProxy(sets.BTsets.ProxyListURL, sets.BTsets.ProxyTypeFilter)
 		if err != nil {
 			c.AbortWithError(http.StatusInternalServerError, errors.Wrap(err, "Failed to fetch proxy"))
 			return

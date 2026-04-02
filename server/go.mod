@@ -1,6 +1,6 @@
 module server
 
-go 1.25
+go 1.25.5
 
 replace (
 	github.com/YouROK/tunsgo v0.0.6 => github.com/tsynik/tunsgo v0.0.7
@@ -29,7 +29,6 @@ require (
 	github.com/swaggo/gin-swagger v1.6.1
 	github.com/swaggo/swag v1.16.6
 	github.com/wlynxg/anet v0.0.5
-	github.com/yourok/tunsgo v0.0.0-20260219202119-1a2c30d897ae
 	go.etcd.io/bbolt v1.4.3
 	golang.org/x/exp v0.0.0-20260112195511-716be5621a96
 	golang.org/x/image v0.33.0
@@ -96,7 +95,6 @@ require (
 	github.com/go-playground/validator/v10 v10.28.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.19.0 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/uuid v1.6.0 // indirect
