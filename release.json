@@ -13,8 +13,6 @@
         "freebsd-amd64": "https://github.com/9000000/TorrServer/releases/download/MatriX.141.3/TorrServer-freebsd-amd64",
         "linux-386": "https://github.com/9000000/TorrServer/releases/download/MatriX.141.3/TorrServer-linux-386",
         "linux-amd64": "https://github.com/9000000/TorrServer/releases/download/MatriX.141.3/TorrServer-linux-amd64",
-        "linux-arm5": "https://github.com/9000000/TorrServer/releases/download/MatriX.141.3/TorrServer-linux-arm5",
-        "linux-arm6": "https://github.com/9000000/TorrServer/releases/download/MatriX.141.3/TorrServer-linux-arm6",
         "linux-arm64": "https://github.com/9000000/TorrServer/releases/download/MatriX.141.3/TorrServer-linux-arm64",
         "linux-arm7": "https://github.com/9000000/TorrServer/releases/download/MatriX.141.3/TorrServer-linux-arm7",
         "linux-mips": "https://github.com/9000000/TorrServer/releases/download/MatriX.141.3/TorrServer-linux-mips",
