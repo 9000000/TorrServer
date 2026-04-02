@@ -536,13 +536,13 @@ export default function SecondarySettingsComponent({ settings, inputForm }) {
 
       <Box mt={2} mb={2} display="flex" alignItems="center" gap="16px">
         <TextField
+          onChange={inputForm}
           margin='normal'
           id='BitTorrentProxyURL'
           label={t('SettingsDialog.CurrentProxy', 'Current Proxy')}
-          value={maskedProxyUrl}
+          value={BitTorrentProxyURL || ''}
           type='text'
           variant='outlined'
-          disabled
           style={{ flexGrow: 1, marginTop: 0, marginBottom: 0 }}
         />
         <Button
