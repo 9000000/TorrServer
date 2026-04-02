@@ -64,6 +64,7 @@ jobs:
     name: Build and Release
     runs-on: ubuntu-latest
     env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       # For push (tag) events, build all platforms
       # For workflow_dispatch, use the checkbox selections
       SELECTIVE_BUILD: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
@@ -108,6 +109,8 @@ jobs:
         with:
           go-version: "1.24.0"
           check-latest: true
+          cache: true
+          cache-dependency-path: server/go.sum
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

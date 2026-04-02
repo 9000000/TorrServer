@@ -23,6 +23,7 @@ env:
   GLIBC_LIMITED_OSES: "debian-11|almalinux-8|rocky-8|amazonlinux-2"
   MAX_RETRIES: "3"
   RETRY_DELAY: "60"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   test-script-syntax:
