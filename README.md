@@ -84,7 +84,7 @@ curl -s https://raw.githubusercontent.com/9000000/TorrServer/master/installTorrS
 - Install a specific version:
 
   ```bash
-  sudo bash ./installTorrServerLinux.sh --install 135 --silent
+  sudo bash ./installTorrServerLinux.sh --install --silent
   ```
 
 - Update to latest version:
@@ -176,7 +176,7 @@ On FreeBSD (TrueNAS/FreeNAS) you can use this plugin: <https://github.com/filka9
 - `--pubipv6 PUBIPV6`, `-6 PUBIPV6` - set public IPv6 addr
 - `--searchwa`, `-s` - allow search without authentication
 - `--maxsize MAXSIZE`, `-m MAXSIZE` - max allowed stream size (in Bytes)
-- `--tg TGTOKEN`, `-T TGTOKEN` - telegram bot token
+- `--tg TGTOKEN`, `-T TGTOKEN` - [Telegram bot](server/tgbot/README.md) token
 - `--fuse FUSEPATH`, `-f FUSEPATH` - fuse mount path
 - `--webdav` - enable web dav
 - `--proxyurl PROXYURL` - set proxy URL for BitTorrent traffic (http, socks4, socks5, socks5h), example: socks5h://user:password@example.com:2080

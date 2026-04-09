@@ -1,6 +1,0 @@
-UU server/web/pages/template/pages/asset-manifest.json
-?? ERRORS.md
-?? GEMINI.md
-?? docs/
-?? new_commits.txt
-?? status.txt

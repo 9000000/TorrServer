@@ -1,7 +1,0 @@
-UU server/version/version.go
-?? ERRORS.md
-?? GEMINI.md
-?? docs/
-?? new_commits.txt
-?? status.txt
-?? status2.txt
