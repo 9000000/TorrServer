@@ -68,6 +68,10 @@ func NewTorrent(spec *torrent.TorrentSpec, bt *BTServer) (*Torrent, error) {
 	if bt == nil || bt.client == nil {
 		return nil, errors.New("BT client not connected")
 	}
+
+	// Auto-save trackers from the source (magnet or .torrent file)
+	utils.SaveUniqueTrackers(spec.Trackers)
+
 	switch settings.BTsets.RetrackersMode {
 	case 1:
 		spec.Trackers = append(spec.Trackers, [][]string{utils.GetDefTrackers()}...)
@@ -589,6 +593,45 @@ func (t *Torrent) Status() *state.TorrentStatus {
 			if err == nil {
 				st.TorrsHash = token
 			}
+		}
+	}
+
+	return st
+}
+
+func (t *Torrent) StatusLight() *state.TorrentStatus {
+	t.muTorrent.Lock()
+	defer t.muTorrent.Unlock()
+
+	st := new(state.TorrentStatus)
+
+	st.Stat = t.Stat
+	st.StatString = t.Stat.String()
+	st.Title = t.Title
+	st.Category = t.Category
+	st.Poster = t.Poster
+	st.Data = t.Data
+	st.Timestamp = t.Timestamp
+	st.TorrentSize = t.Size
+	st.BitRate = t.BitRate
+	st.DurationSeconds = t.DurationSeconds
+
+	if t.TorrentSpec != nil {
+		st.Hash = t.TorrentSpec.InfoHash.HexString()
+	}
+	if t.Torrent != nil {
+		st.Name = t.Torrent.Name()
+		st.Hash = t.Torrent.InfoHash().HexString()
+		st.DownloadSpeed = t.DownloadSpeed
+		st.UploadSpeed = t.UploadSpeed
+
+		tst := t.Torrent.Stats()
+		st.TotalPeers = tst.TotalPeers
+		st.ActivePeers = tst.ActivePeers
+		st.ConnectedSeeders = tst.ConnectedSeeders
+
+		if t.Torrent.Info() != nil {
+			st.TorrentSize = t.Torrent.Length()
 		}
 	}
 
