@@ -8,8 +8,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
+	"server/log"
 	"server/settings"
 
 	"github.com/anacrolix/torrent"
@@ -36,6 +38,75 @@ var defTrackers = []string{
 
 var loadedTrackers []string
 var lastTrackerUpdate time.Time
+var trackersLock sync.Mutex
+
+func SaveUniqueTrackers(trackers [][]string) {
+	// Count total trackers for logging
+	totalInput := 0
+	for _, tier := range trackers {
+		totalInput += len(tier)
+	}
+
+	if len(trackers) == 0 || totalInput == 0 {
+		log.TLogln("[Trackers] SaveUniqueTrackers called with empty trackers")
+		return
+	}
+
+	log.TLogln("[Trackers] SaveUniqueTrackers called with", len(trackers), "tiers,", totalInput, "trackers total")
+
+	trackersLock.Lock()
+	defer trackersLock.Unlock()
+
+	name := filepath.Join(settings.Path, "trackers.txt")
+	log.TLogln("[Trackers] File path:", name)
+
+	existing := make(map[string]bool)
+
+	// Read existing trackers to avoid duplicates
+	buf, err := os.ReadFile(name)
+	if err == nil {
+		lines := strings.Split(string(buf), "\n")
+		for _, l := range lines {
+			l = strings.TrimSpace(l)
+			if l != "" {
+				existing[l] = true
+			}
+		}
+		log.TLogln("[Trackers] Existing trackers in file:", len(existing))
+	} else {
+		log.TLogln("[Trackers] File not found or read error:", err, "- will create new file")
+	}
+
+	var newTrackers []string
+	for _, tier := range trackers {
+		for _, tr := range tier {
+			tr = strings.TrimSpace(tr)
+			if tr != "" && (strings.HasPrefix(tr, "udp") || strings.HasPrefix(tr, "http") || strings.HasPrefix(tr, "wss")) {
+				if !existing[tr] {
+					newTrackers = append(newTrackers, tr)
+					existing[tr] = true // Mark as added to avoid duplicates in the same batch
+				}
+			}
+		}
+	}
+
+	if len(newTrackers) > 0 {
+		log.TLogln("[Trackers] Writing", len(newTrackers), "new trackers to file")
+		f, err := os.OpenFile(name, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.TLogln("[Trackers] ERROR: Cannot open file for writing:", err)
+			return
+		}
+		defer f.Close()
+
+		for _, tr := range newTrackers {
+			f.WriteString(tr + "\n")
+		}
+		log.TLogln("[Trackers] Successfully wrote", len(newTrackers), "trackers")
+	} else {
+		log.TLogln("[Trackers] No new trackers to add (all", totalInput, "already exist)")
+	}
+}
 
 func GetTrackerFromFile() []string {
 	name := filepath.Join(settings.Path, "trackers.txt")
@@ -44,11 +115,17 @@ func GetTrackerFromFile() []string {
 		list := strings.Split(string(buf), "\n")
 		var ret []string
 		for _, l := range list {
-			if strings.HasPrefix(l, "udp") || strings.HasPrefix(l, "http") {
+			l = strings.TrimSpace(l)
+			if strings.HasPrefix(l, "udp") || strings.HasPrefix(l, "http") || strings.HasPrefix(l, "wss") {
 				ret = append(ret, l)
 			}
 		}
+		if len(ret) > 0 {
+			log.TLogln("[Trackers] Loaded", len(ret), "trackers from", name)
+		}
 		return ret
+	} else if !os.IsNotExist(err) {
+		log.TLogln("[Trackers] Warning: could not read trackers file:", err)
 	}
 	return nil
 }
