@@ -1,6 +1,6 @@
 {
   "name": "torrserver_web",
-  "version": "MatriX.141.6",
+  "version": "5.0.0",
   "private": true,
   "dependencies": {
     "@material-ui/core": "^4.11.4",
