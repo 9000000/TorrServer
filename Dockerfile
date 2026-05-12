@@ -60,16 +60,21 @@ RUN apt update && apt install -y upx-ucl && upx --best --lzma ./torrserver
 ### BUILD MAIN IMAGE START ###
 FROM alpine
 
-ENV TS_CONF_PATH="/opt/ts/config"
-ENV TS_LOG_PATH="/opt/ts/log"
-ENV TS_TORR_DIR="/opt/ts/torrents"
-ENV TS_PORT=8090
+ENV TS_CONF_PATH="/tmp/ts/config"
+ENV TS_LOG_PATH="/tmp/ts/log"
+ENV TS_TORR_DIR="/tmp/ts/torrents"
+ENV TS_PORT=7860
 ENV GODEBUG=madvdontneed=1
 
 COPY --from=compressed ./torrserver /usr/bin/torrserver
 COPY ./docker-entrypoint.sh /docker-entrypoint.sh
 
-RUN apk add --no-cache --update ffmpeg
+RUN apk add --no-cache --update ffmpeg bash \
+    && chmod +x /usr/bin/torrserver /docker-entrypoint.sh \
+    && mkdir -p /tmp/ts/config /tmp/ts/torrents \
+    && chmod -R 777 /tmp/ts
 
-CMD /docker-entrypoint.sh
-### BUILD MAIN IMAGE end ###
+EXPOSE 7860
+
+CMD ["/bin/bash", "/docker-entrypoint.sh"]
+### BUILD MAIN IMAGE END ###
