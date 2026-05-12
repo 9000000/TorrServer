@@ -1,0 +1,22 @@
+ersion: '3.3'
+services:
+    torrserver:
+        image: matrix37/torrserver:latest
+        container_name: torrserver
+        environment:
+            - TS_PORT=6555
+            - TS_DONTKILL=1
+            - TS_RDB=1
+            - TS_PEERS_LISTEN_PORT=3737
+            - TS_CONF_PATH=/opt/ts/config
+            - TS_TORR_DIR=/opt/ts/torrents
+            #- TS_PROXYURL=socks5://193.25.215.182:22222
+            #- TS_PROXYMODE=tracker
+        volumes:
+            - /home/dockers/torrserver/CACHE:/opt/ts/torrents
+            - /home/dockers/torrserver/CONFIG:/opt/ts/config
+        ports:
+            - "6555:6555"
+            - "3737:3737"
+            - "3737:3737/udp"
+        restart: unless-stopped

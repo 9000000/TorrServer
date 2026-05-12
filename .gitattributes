@@ -1,0 +1,8 @@
+* text=auto eol=lf
+*.js text eol=lf
+*.sh text eol=lf
+bin/* text eol=lf
+*.jpg filter=lfs diff=lfs merge=lfs -text
+*.png filter=lfs diff=lfs merge=lfs -text
+*.syso filter=lfs diff=lfs merge=lfs -text
+upx filter=lfs diff=lfs merge=lfs -text
