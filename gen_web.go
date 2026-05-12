@@ -41,10 +41,36 @@ func main() {
 
 	if _, err := os.Stat("web/build/static"); os.IsNotExist(err) {
 		os.Chdir("web")
-		if err = run("yarn"); err != nil {
+		
+		pm := "yarn"
+		args_i := []string{}
+		args_b := []string{"run", "build"}
+
+		// Check if yarn exists
+		if _, err := exec.LookPath(pm); err != nil {
+			// Try npm
+			pm = "npm"
+			args_i = []string{"install"}
+			// Handle windows .cmd suffix
+			if os.Getenv("OS") == "Windows_NT" {
+				if _, errNpm := exec.LookPath("npm.cmd"); errNpm == nil {
+					pm = "npm.cmd"
+				}
+			}
+		} else {
+			// For yarn on Windows
+			if os.Getenv("OS") == "Windows_NT" {
+				if _, errYarn := exec.LookPath("yarn.cmd"); errYarn == nil {
+					pm = "yarn.cmd"
+				}
+			}
+		}
+
+		log.Println("Building web assets using", pm)
+		if err = run(pm, args_i...); err != nil {
 			log.Default().Fatalln(err.Error())
 		}
-		if err = run("yarn", "run", "build"); err != nil {
+		if err = run(pm, args_b...); err != nil {
 			log.Default().Fatalln(err.Error())
 		}
 		os.Chdir(dir)

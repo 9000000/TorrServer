@@ -112,17 +112,26 @@ var Indexhtml []byte
 //go:embed pages/logo.png
 var Logopng []byte
 
+//go:embed pages/lordicon/jkzgajyr.json
+var Lordiconjkzgajyrjson []byte
+
+//go:embed pages/lordicon/lord-icon-2.0.2.js
+var Lordiconlordicon202js []byte
+
+//go:embed pages/lordicon/wrprwmwt.json
+var Lordiconwrprwmwtjson []byte
+
 //go:embed pages/mstile-150x150.png
 var Mstile150x150png []byte
 
 //go:embed pages/site.webmanifest
 var Sitewebmanifest []byte
 
-//go:embed pages/static/js/main.f8a22dee.js
-var Staticjsmainf8a22deejs []byte
+//go:embed pages/static/js/main.1647287e.js
+var Staticjsmain1647287ejs []byte
 
-//go:embed pages/static/js/main.f8a22dee.js.LICENSE.txt
-var Staticjsmainf8a22deejsLICENSEtxt []byte
+//go:embed pages/static/js/main.1647287e.js.LICENSE.txt
+var Staticjsmain1647287ejsLICENSEtxt []byte
 
-//go:embed pages/static/js/main.f8a22dee.js.map
-var Staticjsmainf8a22deejsmap []byte
+//go:embed pages/static/js/main.1647287e.js.map
+var Staticjsmain1647287ejsmap []byte
