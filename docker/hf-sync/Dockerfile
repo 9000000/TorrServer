@@ -33,6 +33,7 @@ RUN mkdir -p /tmp/ts/torrents && \
 
 EXPOSE 7860
 
-CMD ["/usr/bin/torrserver", "--port", "7860", "--path", "/data", "--torrentsdir", "/tmp/ts/torrents", "--logpath", "/tmp/ts/torr.log"]
+# Kiểm tra và tự động tạo file tracker.txt trống trong /data (nếu chưa có) lúc khởi chạy, sau đó thực thi TorrServer
+CMD ["sh", "-c", "[ ! -f /data/tracker.txt ] && touch /data/tracker.txt; exec /usr/bin/torrserver --port 7860 --path /data --torrentsdir /tmp/ts/torrents --logpath /tmp/ts/torr.log"]
 
 
