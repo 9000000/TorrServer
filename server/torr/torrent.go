@@ -442,18 +442,51 @@ func (t *Torrent) Status() *state.TorrentStatus {
 			// Exclude "anime" to keep default indexing as requested
 			catLower := strings.ToLower(st.Category)
 			if strings.Contains(catLower, "tv") && !strings.Contains(catLower, "anime") {
-				// Priority 1: "Season...Episode" structure (Folder/File) - e.g. "Season 12/Episode 01.mkv"
+				// Full matches
 				reSeasonEp := regexp.MustCompile(`(?i)Season\W*(\d+).*\WEpisode\W*(\d+)`)
-
-				// Priority 2: Standard S...E... (e.g. S12E01)
 				reSE := regexp.MustCompile(`(?i)\bS(\d+)(?:[^0-9E]+)?E(\d+)\b`)
-
-				// Priority 3: X notation (e.g. 12x01)
 				reX := regexp.MustCompile(`(?i)\b(\d+)x(\d+)\b`)
 
-				parseID := func(s string) int {
-					// Try Season/Episode full words first (often in folder names)
-					matches := reSeasonEp.FindStringSubmatch(s)
+				// Season extractors
+				reSeasonGen := regexp.MustCompile(`(?i)\bS(?:eason)?\W*(\d+)`)
+				reSeasonRU := regexp.MustCompile(`(?i)Сезон\W*(\d+)\b`)
+				reSeasonReverse := regexp.MustCompile(`(?i)(\d+)\W*(?:-[йяе]?\s+)?(?:Сезон|Season)`)
+
+				// Episode extractors
+				reEpGen := regexp.MustCompile(`(?i)\bE(?:p|pisode)?\W*(\d+)\b`)
+				reEpLeading := regexp.MustCompile(`^\s*(\d+)`)
+
+				extractSeason := func(s string) int {
+					if m := reSeasonGen.FindStringSubmatch(s); len(m) == 2 {
+						n, _ := strconv.Atoi(m[1])
+						return n
+					}
+					if m := reSeasonReverse.FindStringSubmatch(s); len(m) == 2 {
+						n, _ := strconv.Atoi(m[1])
+						return n
+					}
+					if m := reSeasonRU.FindStringSubmatch(s); len(m) == 2 {
+						n, _ := strconv.Atoi(m[1])
+						return n
+					}
+					return 0
+				}
+
+				extractEpisode := func(s string) int {
+					if m := reEpGen.FindStringSubmatch(s); len(m) == 2 {
+						n, _ := strconv.Atoi(m[1])
+						return n
+					}
+					if m := reEpLeading.FindStringSubmatch(s); len(m) == 2 {
+						n, _ := strconv.Atoi(m[1])
+						return n
+					}
+					return 0
+				}
+
+				parseID := func(inputStr string) int {
+					// 1. Try Full Path Pattern
+					matches := reSeasonEp.FindStringSubmatch(inputStr)
 					if len(matches) == 3 {
 						season, _ := strconv.Atoi(matches[1])
 						episode, _ := strconv.Atoi(matches[2])
@@ -462,8 +495,7 @@ func (t *Torrent) Status() *state.TorrentStatus {
 						}
 					}
 
-					// Try S...E...
-					matches = reSE.FindStringSubmatch(s)
+					matches = reSE.FindStringSubmatch(inputStr)
 					if len(matches) == 3 {
 						season, _ := strconv.Atoi(matches[1])
 						episode, _ := strconv.Atoi(matches[2])
@@ -472,13 +504,35 @@ func (t *Torrent) Status() *state.TorrentStatus {
 						}
 					}
 
-					// Try 12x01
-					matches = reX.FindStringSubmatch(s)
+					matches = reX.FindStringSubmatch(inputStr)
 					if len(matches) == 3 {
 						season, _ := strconv.Atoi(matches[1])
 						episode, _ := strconv.Atoi(matches[2])
 						if season > 0 && episode > 0 {
 							return season*100 + episode
+						}
+					}
+
+					// 2. Split Component-based Strategy
+					// Assumes inputStr could be a full path or just a filename/title
+					dir := filepath.Dir(inputStr)
+					base := filepath.Base(inputStr)
+
+					ep := extractEpisode(base)
+					if ep > 0 {
+						// Look for Season context
+						// Try Directory Path
+						season := extractSeason(dir)
+						if season == 0 {
+							// Try Category
+							season = extractSeason(st.Category)
+						}
+						if season == 0 {
+							// Try Torrent Title
+							season = extractSeason(t.Title)
+						}
+						if season > 0 {
+							return season*100 + ep
 						}
 					}
 
