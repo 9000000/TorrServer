@@ -33,6 +33,6 @@ RUN mkdir -p /tmp/ts/torrents && \
 
 EXPOSE 7860
 
-CMD ["sh", "-c", "[ ! -f /data/tracker.txt ] && touch /data/tracker.txt; exec /usr/bin/torrserver --port 7860 --path /data --torrentsdir /tmp/ts/torrents --logpath /tmp/ts/torr.log"]
+CMD ["/usr/bin/torrserver", "--port", "7860", "--path", "/data", "--torrentsdir", "/tmp/ts/torrents", "--logpath", "/tmp/ts/torr.log"]
 
 
