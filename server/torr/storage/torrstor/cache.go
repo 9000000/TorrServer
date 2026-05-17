@@ -316,13 +316,19 @@ func (c *Cache) setLoadPriority(ranges []Range) {
 		count := settings.BTsets.ConnectionsLimit / readerCount // max concurrent loading blocks
 		limit := 0
 
-		c.muPieces.RLock()
 		for i := readerPos; i < end && limit < count; i++ {
+			c.muPieces.RLock()
 			p, ok := c.pieces[i]
+			isComplete := false
+			if ok {
+				isComplete = p.Complete
+			}
+			c.muPieces.RUnlock()
+
 			if !ok {
 				continue
 			}
-			if !p.Complete {
+			if !isComplete {
 				if i == readerPos {
 					c.torrent.Piece(i).SetPriority(torrent.PiecePriorityNow)
 				} else if i == readerPos+1 {
@@ -337,7 +343,6 @@ func (c *Cache) setLoadPriority(ranges []Range) {
 				limit++
 			}
 		}
-		c.muPieces.RUnlock()
 	}
 	c.muReaders.Unlock()
 }
@@ -427,14 +432,18 @@ func (c *Cache) clearPriority() {
 	c.muReaders.Unlock()
 	ranges = mergeRange(ranges)
 
-	// BUG-2 / MINOR-2 fix: lock pieces map and nil-check
 	c.muPieces.RLock()
-	defer c.muPieces.RUnlock()
 	if c.pieces == nil {
+		c.muPieces.RUnlock()
 		return
 	}
-
+	var keys []int
 	for id := range c.pieces {
+		keys = append(keys, id)
+	}
+	c.muPieces.RUnlock()
+
+	for _, id := range keys {
 		if len(ranges) > 0 {
 			if !inRanges(ranges, id) {
 				if c.torrent.PieceState(id).Priority != torrent.PiecePriorityNone {
