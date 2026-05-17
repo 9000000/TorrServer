@@ -309,14 +309,7 @@ func (c *Cache) setLoadPriority(ranges []Range) {
 		readerPos := r.getReaderPiece()
 		readerRAHPos := r.getReaderRAHPiece()
 		end := r.getPiecesRange().End
-		readerCount := len(c.readers)
-		if readerCount == 0 {
-			readerCount = 1
-		}
-		count := settings.BTsets.ConnectionsLimit / readerCount // max concurrent loading blocks
-		limit := 0
-
-		for i := readerPos; i < end && limit < count; i++ {
+		for i := readerPos; i < end; i++ {
 			c.muPieces.RLock()
 			p, ok := c.pieces[i]
 			isComplete := false
@@ -340,7 +333,6 @@ func (c *Cache) setLoadPriority(ranges []Range) {
 				} else if i > readerRAHPos+5 && c.torrent.PieceState(i).Priority != torrent.PiecePriorityNormal {
 					c.torrent.Piece(i).SetPriority(torrent.PiecePriorityNormal)
 				}
-				limit++
 			}
 		}
 	}
