@@ -39,7 +39,7 @@ func mergeRange(ranges []Range) []Range {
 
 	j := 0
 	for i := 1; i < len(merged); i++ {
-		if merged[j].End >= merged[i].Start {
+		if merged[j].End+1 >= merged[i].Start {
 			if merged[j].End < merged[i].End {
 				merged[j].End = merged[i].End
 			}
