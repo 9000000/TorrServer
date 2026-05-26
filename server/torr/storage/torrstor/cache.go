@@ -43,16 +43,19 @@ type Cache struct {
 	// OPT-1 fix: debounce cleanPieces — at most once per interval
 	lastCleanTime time.Time
 	cleanInterval time.Duration
+
+	lastOSFreeTime time.Time
 }
 
 func NewCache(capacity int64, storage *Storage) *Cache {
 	ret := &Cache{
-		capacity:      capacity,
-		filled:        0,
-		pieces:        make(map[int]*Piece),
-		storage:       storage,
-		readers:       make(map[*Reader]struct{}),
-		cleanInterval: 500 * time.Millisecond, // OPT-1: debounce interval (500ms for faster response)
+		capacity:       capacity,
+		filled:         0,
+		pieces:         make(map[int]*Piece),
+		storage:        storage,
+		readers:        make(map[*Reader]struct{}),
+		cleanInterval:  500 * time.Millisecond, // OPT-1: debounce interval (500ms for faster response)
+		lastOSFreeTime: time.Now(),
 	}
 
 	return ret
@@ -234,19 +237,24 @@ func (c *Cache) cleanPieces() {
 	c.muRemove.Unlock()
 
 	remPieces := c.getRemPieces()
+	releasedAny := false
 	if c.filled > c.capacity {
 		rems := (c.filled-c.capacity)/c.pieceLength + 1
 		for _, p := range remPieces {
 			c.removePiece(p)
+			releasedAny = true
 			rems--
 			if rems <= 0 {
-				// OPT-6 fix: do NOT call FreeOSMem/GC during streaming.
-				// debug.FreeOSMemory() triggers a full GC cycle causing
-				// 50-200ms pause (micro-stuttering) in the HTTP stream.
-				// Memory will be reclaimed naturally by Go's background GC.
-				return
+				break
 			}
 		}
+	}
+
+	// Memory protection mechanism: call FreeOSMemGC periodically when pieces are released
+	// and at least 10 seconds have elapsed since the last system memory free to avoid micro-stuttering.
+	if releasedAny && time.Since(c.lastOSFreeTime) > 10*time.Second {
+		c.lastOSFreeTime = time.Now()
+		go utils.FreeOSMemGC()
 	}
 }
 
