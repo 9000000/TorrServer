@@ -289,8 +289,68 @@ func (c *Cache) getRemPieces() []*Piece {
 	c.clearPriority()
 	c.setLoadPriority(ranges)
 
+	// Get current positions of all active readers
+	activeReadersPos := make([]int, 0)
+	c.muReaders.Lock()
+	for r := range c.readers {
+		r.checkReader()
+		if r.isUse {
+			activeReadersPos = append(activeReadersPos, r.getReaderPiece())
+		}
+	}
+	c.muReaders.Unlock()
+
 	sort.Slice(piecesRemove, func(i, j int) bool {
-		return piecesRemove[i].GetAccessed() < piecesRemove[j].GetAccessed() // BUG-1 fix: atomic read
+		pi := piecesRemove[i]
+		pj := piecesRemove[j]
+
+		// Apply streaming-optimized sorting if there are active readers
+		if len(activeReadersPos) > 0 {
+			isBehindI := true
+			isBehindJ := true
+			minDistI := int(^uint(0) >> 1) // Initialize with MaxInt
+			minDistJ := int(^uint(0) >> 1)
+
+			for _, rPos := range activeReadersPos {
+				if pi.Id >= rPos {
+					isBehindI = false
+					dist := pi.Id - rPos
+					if dist < minDistI {
+						minDistI = dist
+					}
+				}
+				if pj.Id >= rPos {
+					isBehindJ = false
+					dist := pj.Id - rPos
+					if dist < minDistJ {
+						minDistJ = dist
+					}
+				}
+			}
+
+			// Priority 1: Played pieces (behind all readers) should be evicted FIRST
+			if isBehindI && !isBehindJ {
+				return true // i is evicted before j
+			}
+			if !isBehindI && isBehindJ {
+				return false // j is evicted before i
+			}
+
+			// Priority 2: Both pieces are already played
+			if isBehindI && isBehindJ {
+				// Evict pieces further behind first (smaller Id)
+				return pi.Id < pj.Id
+			}
+
+			// Priority 3: Both pieces are ahead of readers (preloaded/upcoming pieces)
+			// Evict pieces further ahead first (larger distance from current reader)
+			if minDistI != minDistJ {
+				return minDistI > minDistJ
+			}
+		}
+
+		// Fallback: Evict oldest accessed pieces first
+		return pi.GetAccessed() < pj.GetAccessed()
 	})
 
 	c.filled = fill
