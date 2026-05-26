@@ -161,19 +161,22 @@ func (c *Cache) GetState() *state.CacheState {
 	piecesState := make(map[int]state.ItemState, 0)
 	var fill int64 = 0
 
-	// BUG-2 fix: lock pieces map during iteration
 	c.muPieces.RLock()
 	if c.pieces != nil && len(c.pieces) > 0 {
 		for _, p := range c.pieces {
 			pSize := p.GetSize() // BUG-1 fix: atomic read
 			if pSize > 0 {
 				fill += pSize
+				priority := 0
+				if c.torrent != nil {
+					priority = int(c.torrent.PieceState(p.Id).Priority)
+				}
 				piecesState[p.Id] = state.ItemState{
 					Id:        p.Id,
 					Size:      pSize,
 					Length:    c.pieceLength,
 					Completed: p.Complete,
-					Priority:  int(c.torrent.PieceState(p.Id).Priority),
+					Priority:  priority,
 				}
 			}
 		}
@@ -364,6 +367,14 @@ func (c *Cache) getRemPieces() []*Piece {
 
 func (c *Cache) setLoadPriority(ranges []Range) {
 	c.muReaders.Lock()
+	defer c.muReaders.Unlock()
+	if c.torrent == nil {
+		return
+	}
+
+	c.muPieces.RLock()
+	defer c.muPieces.RUnlock()
+
 	for r := range c.readers {
 		if !r.isUse {
 			continue
@@ -375,18 +386,11 @@ func (c *Cache) setLoadPriority(ranges []Range) {
 		readerRAHPos := r.getReaderRAHPiece()
 		end := r.getPiecesRange().End
 		for i := readerPos; i < end; i++ {
-			c.muPieces.RLock()
 			p, ok := c.pieces[i]
-			isComplete := false
-			if ok {
-				isComplete = p.Complete
-			}
-			c.muPieces.RUnlock()
-
 			if !ok {
 				continue
 			}
-			if !isComplete {
+			if !p.Complete {
 				if i == readerPos {
 					c.torrent.Piece(i).SetPriority(torrent.PiecePriorityNow)
 				} else if i == readerPos+1 {
@@ -401,7 +405,6 @@ func (c *Cache) setLoadPriority(ranges []Range) {
 			}
 		}
 	}
-	c.muReaders.Unlock()
 }
 
 func (c *Cache) isIdInFileBE(ranges []Range, id int) bool {
