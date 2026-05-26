@@ -52,7 +52,7 @@ func NewCache(capacity int64, storage *Storage) *Cache {
 		pieces:        make(map[int]*Piece),
 		storage:       storage,
 		readers:       make(map[*Reader]struct{}),
-		cleanInterval: 1 * time.Second, // OPT-1: debounce interval
+		cleanInterval: 500 * time.Millisecond, // OPT-1: debounce interval (500ms for faster response)
 	}
 
 	return ret
@@ -237,8 +237,10 @@ func (c *Cache) cleanPieces() {
 			c.removePiece(p)
 			rems--
 			if rems <= 0 {
-				// OPT-6 fix: use FreeOSMem (no forced full GC) during streaming
-				utils.FreeOSMem()
+				// OPT-6 fix: do NOT call FreeOSMem/GC during streaming.
+				// debug.FreeOSMemory() triggers a full GC cycle causing
+				// 50-200ms pause (micro-stuttering) in the HTTP stream.
+				// Memory will be reclaimed naturally by Go's background GC.
 				return
 			}
 		}
@@ -266,6 +268,18 @@ func (c *Cache) getRemPieces() []*Piece {
 		c.muPieces.RUnlock()
 		return piecesRemove
 	}
+	// Collect readahead ranges to additionally protect pieces being actively downloaded
+	readaheadRanges := make([]Range, 0)
+	c.muReaders.Lock()
+	for r := range c.readers {
+		if r.isUse {
+			readerPiece := r.getReaderPiece()
+			rahPiece := r.getReaderRAHPiece()
+			readaheadRanges = append(readaheadRanges, Range{Start: readerPiece, End: rahPiece})
+		}
+	}
+	c.muReaders.Unlock()
+
 	for id, p := range c.pieces {
 		pSize := p.GetSize() // BUG-1 fix: atomic read
 		if pSize > 0 {
@@ -273,7 +287,8 @@ func (c *Cache) getRemPieces() []*Piece {
 		}
 		if len(ranges) > 0 {
 			if !inRanges(ranges, id) {
-				if pSize > 0 && !c.isIdInFileBE(ranges, id) {
+				// Also protect pieces within the readahead window
+				if pSize > 0 && !c.isIdInFileBE(ranges, id) && !inRanges(readaheadRanges, id) {
 					piecesRemove = append(piecesRemove, p)
 				}
 			}

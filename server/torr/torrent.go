@@ -235,11 +235,11 @@ func (t *Torrent) updateRA() {
 	t.muTorrent.Lock()
 	if t.Torrent != nil && t.Torrent.Info() != nil {
 		pieceLen := t.Torrent.Info().PieceLength
-		if adj < pieceLen {
-			adj = pieceLen
+		if adj < pieceLen*2 {
+			adj = pieceLen * 2
 		}
-		if adj > pieceLen*4 {
-			adj = pieceLen * 4
+		if adj > pieceLen*8 {
+			adj = pieceLen * 8
 		}
 	} else {
 		// Fallback when no torrent info yet
