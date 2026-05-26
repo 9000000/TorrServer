@@ -251,12 +251,24 @@ func (c *Cache) getRemPieces() []*Piece {
 	piecesRemove := make([]*Piece, 0)
 	fill := int64(0)
 
+	// Gather all required information from c.readers in a single lock cycle.
+	// This prevents nested locks and eliminates the risk of deadlock with setLoadPriority
+	// which locks muReaders first then muPieces.
 	ranges := make([]Range, 0)
+	readaheadRanges := make([]Range, 0)
+	activeReadersPos := make([]int, 0)
+
 	c.muReaders.Lock()
 	for r := range c.readers {
 		r.checkReader()
 		if r.isUse {
 			ranges = append(ranges, r.getPiecesRange())
+			
+			readerPiece := r.getReaderPiece()
+			rahPiece := r.getReaderRAHPiece()
+			readaheadRanges = append(readaheadRanges, Range{Start: readerPiece, End: rahPiece})
+			
+			activeReadersPos = append(activeReadersPos, readerPiece)
 		}
 	}
 	c.muReaders.Unlock()
@@ -268,17 +280,6 @@ func (c *Cache) getRemPieces() []*Piece {
 		c.muPieces.RUnlock()
 		return piecesRemove
 	}
-	// Collect readahead ranges to additionally protect pieces being actively downloaded
-	readaheadRanges := make([]Range, 0)
-	c.muReaders.Lock()
-	for r := range c.readers {
-		if r.isUse {
-			readerPiece := r.getReaderPiece()
-			rahPiece := r.getReaderRAHPiece()
-			readaheadRanges = append(readaheadRanges, Range{Start: readerPiece, End: rahPiece})
-		}
-	}
-	c.muReaders.Unlock()
 
 	for id, p := range c.pieces {
 		pSize := p.GetSize() // BUG-1 fix: atomic read
@@ -303,17 +304,6 @@ func (c *Cache) getRemPieces() []*Piece {
 
 	c.clearPriority()
 	c.setLoadPriority(ranges)
-
-	// Get current positions of all active readers
-	activeReadersPos := make([]int, 0)
-	c.muReaders.Lock()
-	for r := range c.readers {
-		r.checkReader()
-		if r.isUse {
-			activeReadersPos = append(activeReadersPos, r.getReaderPiece())
-		}
-	}
-	c.muReaders.Unlock()
 
 	sort.Slice(piecesRemove, func(i, j int) bool {
 		pi := piecesRemove[i]
