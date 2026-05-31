@@ -115,10 +115,8 @@ func (p *Piece) Release() {
 	} else {
 		p.dPiece.Release()
 	}
-	if !p.cache.isClosed {
-		if p.cache.torrent != nil {
-			p.cache.torrent.Piece(p.Id).SetPriority(torrent.PiecePriorityNone)
-			p.cache.torrent.Piece(p.Id).UpdateCompletion()
-		}
+	if p.cache.torrent != nil {
+		p.cache.torrent.Piece(p.Id).SetPriority(torrent.PiecePriorityNone)
+		p.cache.torrent.Piece(p.Id).UpdateCompletion()
 	}
 }
