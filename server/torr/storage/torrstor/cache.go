@@ -217,10 +217,10 @@ func (c *Cache) cleanPieces() {
 	if c.isRemove || c.isClosed {
 		return
 	}
-	c.muRemove.Lock()
-	if c.isRemove {
-		c.muRemove.Unlock()
-		return
+	
+	// Protection against concurrent deletion
+	if !c.muRemove.TryLock() {
+		return // Cleanup is already in progress in another goroutine
 	}
 	// OPT-1 fix: debounce — skip if called too recently
 	if time.Since(c.lastCleanTime) < c.cleanInterval {
@@ -259,18 +259,20 @@ func (c *Cache) cleanPieces() {
 }
 
 func (c *Cache) getRemPieces() []*Piece {
-	piecesRemove := make([]*Piece, 0)
-	fill := int64(0)
+	// Copy readers without a long lock (to prevent deadlock)
+	c.muReaders.Lock()
+	readers := make([]*Reader, 0, len(c.readers))
+	for r := range c.readers {
+		readers = append(readers, r)
+	}
+	c.muReaders.Unlock()
 
-	// Gather all required information from c.readers in a single lock cycle.
-	// This prevents nested locks and eliminates the risk of deadlock with setLoadPriority
-	// which locks muReaders first then muPieces.
+	// Collect read ranges from active readers
 	ranges := make([]Range, 0)
 	readaheadRanges := make([]Range, 0)
 	activeReadersPos := make([]int, 0)
 
-	c.muReaders.Lock()
-	for r := range c.readers {
+	for _, r := range readers {
 		r.checkReader()
 		if r.isUse {
 			ranges = append(ranges, r.getPiecesRange())
@@ -282,8 +284,10 @@ func (c *Cache) getRemPieces() []*Piece {
 			activeReadersPos = append(activeReadersPos, readerPiece)
 		}
 	}
-	c.muReaders.Unlock()
 	ranges = mergeRange(ranges)
+
+	piecesRemove := make([]*Piece, 0)
+	fill := int64(0)
 
 	// BUG-2 fix: lock pieces map during iteration
 	c.muPieces.RLock()
@@ -305,7 +309,7 @@ func (c *Cache) getRemPieces() []*Piece {
 				}
 			}
 		} else {
-			// on preload clean
+			// When preloading, clear everything except the beginning and end of the file
 			if pSize > 0 && !c.isIdInFileBE(ranges, id) {
 				piecesRemove = append(piecesRemove, p)
 			}
@@ -316,6 +320,7 @@ func (c *Cache) getRemPieces() []*Piece {
 	c.clearPriority()
 	c.setLoadPriority(ranges)
 
+	// Sort by last access time (oldest first)
 	sort.Slice(piecesRemove, func(i, j int) bool {
 		pi := piecesRemove[i]
 		pj := piecesRemove[j]
