@@ -31,8 +31,14 @@ func newReader(file *torrent.File, cache *Cache) *Reader {
 	r.file = file
 	r.Reader = file.NewReader()
 
-	r.SetReadahead(0)
+	// Set an initial readahead so the torrent engine starts prefetching
+	// immediately, rather than waiting for updateRA() on the next tick.
+	initialRA := cache.pieceLength * 2
+	if initialRA > cache.capacity {
+		initialRA = cache.capacity
+	}
 	r.cache = cache
+	r.SetReadahead(initialRA)
 	r.isUse = true
 
 	cache.muReaders.Lock()

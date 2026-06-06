@@ -1,6 +1,9 @@
 package torrstor
 
 import (
+	"sync/atomic"
+	"time"
+
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/storage"
 	"server/settings"
@@ -9,16 +12,54 @@ import (
 type Piece struct {
 	storage.PieceImpl `json:"-"`
 
-	Id   int   `json:"-"`
-	Size int64 `json:"size"`
+	Id int `json:"-"`
+	// size is accessed atomically to prevent data races between
+	// concurrent readers (GetState, getRemPieces) and writers (WriteAt).
+	size int64
 
-	Complete bool  `json:"complete"`
-	Accessed int64 `json:"accessed"`
+	Complete bool `json:"complete"`
+	// accessed is accessed atomically — written by ReadAt/WriteAt,
+	// read by getRemPieces sort comparator.
+	accessed int64
 
 	mPiece *MemPiece  `json:"-"`
 	dPiece *DiskPiece `json:"-"`
 
 	cache *Cache `json:"-"`
+}
+
+// GetSize returns the current piece size atomically.
+func (p *Piece) GetSize() int64 {
+	return atomic.LoadInt64(&p.size)
+}
+
+// SetSize sets piece size using max(current, newSize) semantics.
+// This correctly handles re-written chunks without double-counting.
+func (p *Piece) SetSize(newSize int64) {
+	for {
+		old := atomic.LoadInt64(&p.size)
+		if newSize <= old {
+			return
+		}
+		if atomic.CompareAndSwapInt64(&p.size, old, newSize) {
+			return
+		}
+	}
+}
+
+// ResetSize sets piece size to zero (used during Release).
+func (p *Piece) ResetSize() {
+	atomic.StoreInt64(&p.size, 0)
+}
+
+// GetAccessed returns the last access timestamp atomically.
+func (p *Piece) GetAccessed() int64 {
+	return atomic.LoadInt64(&p.accessed)
+}
+
+// Touch updates the last access timestamp to now.
+func (p *Piece) Touch() {
+	atomic.StoreInt64(&p.accessed, time.Now().Unix())
 }
 
 func NewPiece(id int, cache *Cache) *Piece {
@@ -74,7 +115,7 @@ func (p *Piece) Release() {
 	} else {
 		p.dPiece.Release()
 	}
-	if !p.cache.isClosed {
+	if p.cache.torrent != nil {
 		p.cache.torrent.Piece(p.Id).SetPriority(torrent.PiecePriorityNone)
 		p.cache.torrent.Piece(p.Id).UpdateCompletion()
 	}

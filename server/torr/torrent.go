@@ -219,20 +219,39 @@ func (t *Torrent) progressEvent() {
 }
 
 func (t *Torrent) updateRA() {
-	// t.muTorrent.Lock()
-	// defer t.muTorrent.Unlock()
-	// if t.Torrent != nil && t.Torrent.Info() != nil {
-	// 	pieceLen := t.Torrent.Info().PieceLength
-	// 	adj := pieceLen * int64(t.Torrent.Stats().ActivePeers) / int64(1+t.cache.Readers())
-	// 	switch {
-	// 	case adj < pieceLen:
-	// 		adj = pieceLen
-	// 	case adj > pieceLen*4:
-	// 		adj = pieceLen * 4
-	// 	}
-	// 	go t.cache.AdjustRA(adj)
-	// }
-	adj := int64(16 << 20) // 16 MB fixed RA
+	if t.cache == nil {
+		return
+	}
+	// OPT-3 fix: adaptive readahead based on cache capacity and reader count
+	readers := t.cache.Readers()
+	if readers == 0 {
+		readers = 1
+	}
+	capacity := t.cache.GetCapacity()
+	// Allocate readahead proportionally: each reader gets a share of cache capacity
+	adj := capacity / int64(readers)
+
+	// Clamp to reasonable bounds using piece length
+	t.muTorrent.Lock()
+	if t.Torrent != nil && t.Torrent.Info() != nil {
+		pieceLen := t.Torrent.Info().PieceLength
+		if adj < pieceLen*2 {
+			adj = pieceLen * 2
+		}
+		if adj > pieceLen*8 {
+			adj = pieceLen * 8
+		}
+	} else {
+		// Fallback when no torrent info yet
+		if adj < 4<<20 { // min 4 MB
+			adj = 4 << 20
+		}
+		if adj > 16<<20 { // max 16 MB
+			adj = 16 << 20
+		}
+	}
+	t.muTorrent.Unlock()
+
 	go t.cache.AdjustRA(adj)
 }
 
@@ -304,6 +323,9 @@ func (t *Torrent) Close() bool {
 	if t == nil {
 		return false
 	}
+	if t.Stat == state.TorrentClosed {
+		return true
+	}
 	if settings.ReadOnly && t.cache != nil && t.cache.GetUseReaders() > 0 {
 		return false
 	}
@@ -311,7 +333,9 @@ func (t *Torrent) Close() bool {
 
 	if t.bt != nil {
 		t.bt.mu.Lock()
-		delete(t.bt.torrents, t.Hash())
+		if _, ok := t.bt.torrents[t.Hash()]; ok {
+			delete(t.bt.torrents, t.Hash())
+		}
 		t.bt.mu.Unlock()
 	}
 
