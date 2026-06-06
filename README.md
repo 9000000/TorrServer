@@ -6,7 +6,7 @@
   Simple and powerful tool for streaming torrents.
   <br/>
   <br/>
-  <a href="https://github.com/9000000/TorrServer/blob/master/LICENSE">
+  <a href="https://github.com/9000000/TorrServer/blob/main/LICENSE">
     <img alt="GitHub" src="https://img.shields.io/github/license/9000000/TorrServer"/>
   </a>
   <a href="https://goreportcard.com/report/github.com/9000000/TorrServer">
@@ -65,7 +65,7 @@ Run `TorrServer-windows-amd64.exe`.
 Run in console
 
 ```bash
-curl -s https://raw.githubusercontent.com/9000000/TorrServer/master/installTorrServerLinux.sh | sudo bash
+curl -s https://raw.githubusercontent.com/9000000/TorrServer/main/installTorrServerLinux.sh | sudo bash
 ```
 
 The script supports interactive and non-interactive installation, configuration, updates, and removal. When running the script interactively, you can:
@@ -77,7 +77,7 @@ The script supports interactive and non-interactive installation, configuration,
 **Download first and set execute permissions:**
 
 ```bash
-curl -s https://raw.githubusercontent.com/9000000/TorrServer/master/installTorrServerLinux.sh -o installTorrServerLinux.sh && chmod 755 installTorrServerLinux.sh
+curl -s https://raw.githubusercontent.com/9000000/TorrServer/main/installTorrServerLinux.sh -o installTorrServerLinux.sh && chmod 755 installTorrServerLinux.sh
 ```
 
 **Command-line examples:**
@@ -142,7 +142,7 @@ curl -s https://raw.githubusercontent.com/9000000/TorrServer/master/installTorrS
 Run in Terminal.app
 
 ```bash
-curl -s https://raw.githubusercontent.com/9000000/TorrServer/master/installTorrServerMac.sh -o installTorrserverMac.sh && chmod 755 installTorrServerMac.sh && bash ./installTorrServerMac.sh
+curl -s https://raw.githubusercontent.com/9000000/TorrServer/main/installTorrServerMac.sh -o installTorrserverMac.sh && chmod 755 installTorrServerMac.sh && bash ./installTorrServerMac.sh
 ```
 
 Alternative install script for Intel Macs: <https://github.com/dancheskus/TorrServerMacInstaller>
@@ -278,7 +278,7 @@ To run the web server locally, just run
 yarn start
 ```
 
-More info at <https://github.com/9000000/TorrServer/tree/master/web#readme>
+More info at <https://github.com/9000000/TorrServer/tree/main/web#readme>
 
 ### Build
 
