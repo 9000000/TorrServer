@@ -3,7 +3,6 @@ package torrstor
 import (
 	"io"
 	"sync"
-	"time"
 )
 
 type MemPiece struct {
@@ -26,11 +25,13 @@ func (p *MemPiece) WriteAt(b []byte, off int64) (n int, err error) {
 		p.buffer = make([]byte, p.piece.cache.pieceLength, p.piece.cache.pieceLength)
 	}
 	n = copy(p.buffer[off:], b[:])
-	p.piece.Size += int64(n)
-	if p.piece.Size > p.piece.cache.pieceLength {
-		p.piece.Size = p.piece.cache.pieceLength
+	// Use max(current, off+n) semantics to correctly handle re-written chunks
+	newSize := off + int64(n)
+	if newSize > p.piece.cache.pieceLength {
+		newSize = p.piece.cache.pieceLength
 	}
-	p.piece.Accessed = time.Now().Unix()
+	p.piece.SetSize(newSize)
+	p.piece.Touch()
 	return
 }
 
@@ -49,8 +50,8 @@ func (p *MemPiece) ReadAt(b []byte, off int64) (n int, err error) {
 		return 0, io.EOF
 	}
 	n = copy(b, p.buffer[int(off) : int(off)+size][:])
-	p.piece.Accessed = time.Now().Unix()
-	if int64(len(b))+off >= p.piece.Size {
+	p.piece.Touch()
+	if int64(len(b))+off >= p.piece.GetSize() {
 		go p.piece.cache.cleanPieces()
 	}
 	if n == 0 {
@@ -65,6 +66,7 @@ func (p *MemPiece) Release() {
 	if p.buffer != nil {
 		p.buffer = nil
 	}
-	p.piece.Size = 0
+	p.piece.ResetSize()
 	p.piece.Complete = false
 }
+

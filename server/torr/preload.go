@@ -140,7 +140,7 @@ func (t *Torrent) Preload(index int, size int64) {
 
 	readerStart.SetResponsive()
 	readerStart.SetReadahead(0)
-	readerStartEnd := size - startend
+	readerStartEnd := size
 
 	if readerStartEnd < 0 {
 		// Если конец начального ридера оказался за началом

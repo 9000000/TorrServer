@@ -640,10 +640,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Torrent statuses",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/state.TorrentStatus"
-                            }
+                            "type": "if"
                         }
                     }
                 }
@@ -785,9 +782,6 @@ const docTemplate = `{
                 "data": {
                     "type": "string"
                 },
-                "filter": {
-                    "type": "string"
-                },
                 "hash": {
                     "type": "string"
                 },
@@ -920,6 +914,10 @@ const docTemplate = `{
                     "description": "BT Config",
                     "type": "boolean"
                 },
+                "enableLPD": {
+                    "description": "LPD",
+                    "type": "boolean"
+                },
                 "enableProxy": {
                     "description": "P2P Proxy",
                     "type": "boolean"
@@ -938,6 +936,9 @@ const docTemplate = `{
                 },
                 "friendlyName": {
                     "type": "string"
+                },
+                "lpdipv6": {
+                    "type": "boolean"
                 },
                 "peersListenPort": {
                     "type": "integer"
