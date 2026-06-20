@@ -396,7 +396,6 @@ func (c *Cache) setLoadPriority(ranges []Range) {
 			continue
 		}
 		readerPos := r.getReaderPiece()
-		readerRAHPos := r.getReaderRAHPiece()
 		end := r.getPiecesRange().End
 		for i := readerPos; i < end; i++ {
 			p, ok := c.pieces[i]
@@ -404,21 +403,15 @@ func (c *Cache) setLoadPriority(ranges []Range) {
 				continue
 			}
 			if !p.Complete {
-				if i == readerPos {
-					c.torrent.Piece(i).SetPriority(torrent.PiecePriorityNow)
-				} else if i == readerPos+1 {
-					c.torrent.Piece(i).SetPriority(torrent.PiecePriorityNext)
-				} else if i > readerPos && i <= readerRAHPos {
-					c.torrent.Piece(i).SetPriority(torrent.PiecePriorityReadahead)
-				} else if i > readerRAHPos && i <= readerRAHPos+5 && c.torrent.PieceState(i).Priority != torrent.PiecePriorityHigh {
-					c.torrent.Piece(i).SetPriority(torrent.PiecePriorityHigh)
-				} else if i > readerRAHPos+5 && c.torrent.PieceState(i).Priority != torrent.PiecePriorityNormal {
+				// Set all active pieces within the read range to have equal Normal priority
+				if c.torrent.PieceState(i).Priority != torrent.PiecePriorityNormal {
 					c.torrent.Piece(i).SetPriority(torrent.PiecePriorityNormal)
 				}
 			}
 		}
 	}
 }
+
 
 func (c *Cache) isIdInFileBE(ranges []Range, id int) bool {
 	// keep 8/16 MB
