@@ -1,4 +1,4 @@
-//go:build (windows && (amd64 || arm64)) || (linux && (amd64 || arm64)) || (darwin && (amd64 || arm64))
+//go:build gst && ((windows && (amd64 || arm64)) || (linux && (amd64 || arm64)) || (darwin && (amd64 || arm64)))
 
 package gstreamer
 
@@ -30,6 +30,8 @@ const (
 	tempFSBaseBlocks         = 3
 	tempFSFallbackBlockBytes = 32 * 1024 * 1024
 	appSinkMaxBytes          = 136 * 1024 * 1024
+	defaultAACChannels       = 2
+	defaultAACSampleRate     = 48000
 )
 
 type gstRunner struct {
@@ -399,14 +401,24 @@ func (r *gstRunner) createPipelineArgs() string {
 			sb.WriteString("aacparse ! audio/mpeg,mpegversion=4,stream-format=raw ! mux.audio_0 ")
 		} else {
 			aacEncoder := r.aacEncoder()
+			aacChannels := effectiveAACChannels(conf, audioTrack)
+			aacSampleRate := effectiveAACSampleRate(conf, audioTrack)
 
 			sb.WriteString("decodebin ! audioconvert dithering=none noise-shaping=none ! audioresample quality=2 sinc-filter-mode=full ! audio/x-raw,format=")
 			sb.WriteString(aacRawFormat())
-			sb.WriteString(",layout=interleaved,rate=48000,channels=2 ! ")
+			sb.WriteString(",layout=interleaved,rate=")
+			sb.WriteString(strconv.Itoa(aacSampleRate))
+			sb.WriteString(",channels=")
+			sb.WriteString(strconv.Itoa(aacChannels))
+			sb.WriteString(" ! ")
 			sb.WriteString(aacEncoder)
 			sb.WriteString(" bitrate=")
 			sb.WriteString(strconv.Itoa(conf.AACBitrateKbps * 1000))
-			sb.WriteString(" ! aacparse ! audio/mpeg,mpegversion=4,stream-format=raw,rate=48000,channels=2 ! mux.audio_0 ")
+			sb.WriteString(" ! aacparse ! audio/mpeg,mpegversion=4,stream-format=raw,rate=")
+			sb.WriteString(strconv.Itoa(aacSampleRate))
+			sb.WriteString(",channels=")
+			sb.WriteString(strconv.Itoa(aacChannels))
+			sb.WriteString(" ! mux.audio_0 ")
 		}
 	}
 
@@ -441,8 +453,8 @@ func effectiveGStreamerVersion(conf Config) gstVersionInfo {
 	if gstRuntime != nil && gstRuntime.version.valid() {
 		return gstRuntime.version
 	}
-	if conf.GSTVersion <= 0 {
-		conf.GSTVersion = 1.22
+	if conf.GSTVersion < minGSTVersion {
+		conf.GSTVersion = minGSTVersion
 	}
 
 	major := uint32(conf.GSTVersion)
@@ -460,6 +472,26 @@ func (r *gstRunner) aacEncoder() string {
 
 func aacRawFormat() string {
 	return "F32LE"
+}
+
+func effectiveAACChannels(conf Config, track *TrackInfo) int {
+	if conf.AACChannels > 0 {
+		return conf.AACChannels
+	}
+	if track != nil && track.Channels > 0 {
+		return track.Channels
+	}
+	return defaultAACChannels
+}
+
+func effectiveAACSampleRate(conf Config, track *TrackInfo) int {
+	if conf.AACSamplerate > 0 {
+		return conf.AACSamplerate
+	}
+	if track != nil && track.Rate > 0 {
+		return track.Rate
+	}
+	return defaultAACSampleRate
 }
 
 func (r *gstRunner) writeSourceQueue(sb *strings.Builder) {
