@@ -3,7 +3,7 @@ package web
 import (
 	"net"
 	"os"
-	"server/proxy"
+	gstreamer "server/gstreamer/bridge"
 	"sort"
 
 	"server/torrfs/fuse"
@@ -28,9 +28,6 @@ import (
 	"server/web/blocker"
 	"server/web/pages"
 	"server/web/sslcerts"
-
-	swaggerFiles "github.com/swaggo/files"     // swagger embed files
-	ginSwagger "github.com/swaggo/gin-swagger" // gin-swagger middleware
 )
 
 var (
@@ -81,6 +78,7 @@ func Start() {
 	route.GET("/echo", echo)
 
 	api.SetupRoute(route)
+	gstreamer.SetupRoute(route)
 	msx.SetupRoute(route)
 	pages.SetupRoute(route)
 	if settings.Args.WebDAV {
@@ -94,7 +92,7 @@ func Start() {
 	// Auto-mount FUSE filesystem if enabled
 	fuse.FuseAutoMount()
 
-	route.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	route.GET("/swagger/*any", swaggerHandler())
 
 	// check if https enabled
 	if settings.Ssl {
@@ -135,11 +133,11 @@ func Wait() error {
 }
 
 func Stop() {
+	gstreamer.Stop()
 	dlna.Stop()
 	// Unmount FUSE filesystem if mounted
 	fuse.FuseCleanup()
 	BTS.Disconnect()
-	proxy.Stop()
 	waitChan <- nil
 }
 
