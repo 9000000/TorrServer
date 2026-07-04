@@ -55,6 +55,11 @@ on:
         required: false
         type: boolean
         default: false
+      gstreamer:
+        description: "🎥 GStreamer binaries (-gst-)"
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -76,6 +81,7 @@ jobs:
       BUILD_ANDROID_ARM64: ${{ github.event.inputs.android_arm64 || 'false' }}
       BUILD_ANDROID_ARM7: ${{ github.event.inputs.android_arm7 || 'false' }}
       BUILD_OTHER: ${{ github.event.inputs.other_platforms || 'false' }}
+      BUILD_GSTREAMER: ${{ github.event.inputs.gstreamer || 'false' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -100,6 +106,7 @@ jobs:
             echo "Android ARM64:     ${BUILD_ANDROID_ARM64}"
             echo "Android ARM7:      ${BUILD_ANDROID_ARM7}"
             echo "Other platforms:   ${BUILD_OTHER}"
+            echo "GStreamer:         ${BUILD_GSTREAMER}"
           fi
           echo "========================================="
 

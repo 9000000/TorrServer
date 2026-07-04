@@ -83,6 +83,18 @@ if should_build "${BUILD_OTHER}"; then
   ANDROID_COMPILERS+=("amd64:x86_64-linux-android21-clang")
 fi
 
+# GStreamer platforms
+GST_PLATFORMS=()
+if should_build "${BUILD_GSTREAMER:-true}"; then
+  GST_PLATFORMS=(
+    'windows/amd64'
+    'linux/amd64'
+    'linux/arm64'
+    'darwin/amd64'
+    'darwin/arm64'
+  )
+fi
+
 echo "========================================="
 echo "  Build Configuration"
 echo "========================================="
@@ -104,10 +116,18 @@ done
 if [[ ${#ANDROID_COMPILERS[@]} -eq 0 ]]; then
   echo "  (none selected)"
 fi
+echo ""
+echo "GStreamer platforms to build:"
+for p in "${GST_PLATFORMS[@]}"; do
+  echo "  ✅ gst/${p}"
+done
+if [[ ${#GST_PLATFORMS[@]} -eq 0 ]]; then
+  echo "  (none selected)"
+fi
 echo "========================================="
 
 # Exit early if nothing to build
-if [[ ${#PLATFORMS[@]} -eq 0 ]] && [[ ${#ANDROID_COMPILERS[@]} -eq 0 ]]; then
+if [[ ${#PLATFORMS[@]} -eq 0 ]] && [[ ${#ANDROID_COMPILERS[@]} -eq 0 ]] && [[ ${#GST_PLATFORMS[@]} -eq 0 ]]; then
   echo "ERROR: No platforms selected for build!"
   exit 1
 fi
@@ -198,26 +218,21 @@ fi
 ### GStreamer build section
 #####
 
-GST_PLATFORMS=(
-  'windows/amd64'
-  'linux/amd64'
-  'linux/arm64'
-  'darwin/amd64'
-  'darwin/arm64'
-)
+if [[ ${#GST_PLATFORMS[@]} -gt 0 ]]; then
+  echo ""
+  echo ">>> Building GStreamer server platforms..."
+  BUILD_FLAGS_GST="-ldflags=${LDFLAGS} -tags=nosqlite,gst -trimpath"
 
-BUILD_FLAGS_GST="-ldflags=${LDFLAGS} -tags=nosqlite,gst -trimpath"
-
-echo "Build GStreamer server"
-for PLATFORM in "${GST_PLATFORMS[@]}"; do
-  GOOS=${PLATFORM%/*}
-  GOARCH=${PLATFORM#*/}
-  BIN_FILENAME="${OUTPUT}-gst-${GOOS}-${GOARCH}"
-  if [[ "${GOOS}" == "windows" ]]; then BIN_FILENAME="${BIN_FILENAME}.exe"; fi
-  CMD="GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=0 ${GOBIN} build ${BUILD_FLAGS_GST} -o ${BIN_FILENAME} ./cmd"
-  echo "${CMD}"
-  eval "$CMD" || FAILURES="${FAILURES} gst/${GOOS}/${GOARCH}"
-done
+  for PLATFORM in "${GST_PLATFORMS[@]}"; do
+    GOOS=${PLATFORM%/*}
+    GOARCH=${PLATFORM#*/}
+    BIN_FILENAME="${OUTPUT}-gst-${GOOS}-${GOARCH}"
+    if [[ "${GOOS}" == "windows" ]]; then BIN_FILENAME="${BIN_FILENAME}.exe"; fi
+    CMD="GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=0 ${GOBIN} build ${BUILD_FLAGS_GST} -o ${BIN_FILENAME} ./cmd"
+    echo "${CMD}"
+    eval "$CMD" || FAILURES="${FAILURES} gst/${GOOS}/${GOARCH}"
+  done
+fi
 
 #####################################
 ### Android build section
