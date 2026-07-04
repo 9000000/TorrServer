@@ -5,10 +5,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     ca-certificates \
     ffmpeg \
+    gstreamer1.0-tools \
+    gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-ugly \
+    gstreamer1.0-libav \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-
 
 RUN architecture=$(uname -m) && \
     case $architecture in \
@@ -18,8 +23,8 @@ RUN architecture=$(uname -m) && \
         armv7|armv7l) arch="arm7" ;; \
         *) echo "Unsupported arch: $architecture"; exit 1 ;; \
     esac && \
-    echo "Tải TorrServer bản: $arch" && \
-    wget -qO /usr/bin/torrserver "https://github.com/9000000/TorrServer/releases/latest/download/TorrServer-linux-$arch" && \
+    echo "Tải TorrServer (GStreamer) bản: $arch" && \
+    wget -qO /usr/bin/torrserver "https://github.com/9000000/TorrServer/releases/latest/download/TorrServer-gst-linux-$arch" && \
     chmod +x /usr/bin/torrserver
 
 ENV TS_PORT=7860
