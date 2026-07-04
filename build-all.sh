@@ -87,7 +87,6 @@ fi
 GST_PLATFORMS=()
 if should_build "${BUILD_GSTREAMER:-true}"; then
   GST_PLATFORMS=(
-    'windows/amd64'
     'linux/amd64'
     'linux/arm64'
     'darwin/amd64'
