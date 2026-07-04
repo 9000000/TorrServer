@@ -59,7 +59,6 @@ func Start() {
 		os.Exit(1)                              // return
 	}
 	rutor.Start()
-	proxy.Start()
 
 	gin.SetMode(gin.ReleaseMode)
 
