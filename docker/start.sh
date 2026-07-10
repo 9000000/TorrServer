@@ -24,7 +24,10 @@ chmod +x $binName
 FLAGS=""
 
 #sets start flags
-[ ! -z "$TS_PORT" ] && echo "TS_PORT: $TS_PORT" && FLAGS="${FLAGS} --port ${TS_PORT}"
+RUN_PORT="${TS_PORT:-$PORT}"
+RUN_PORT="${RUN_PORT:-8080}"
+echo "Running on port: ${RUN_PORT}"
+FLAGS="${FLAGS} --port ${RUN_PORT}"
 
 # Support both TS_CONF_PATH (full) and TS_PATH (lite)
 CONF_PATH="${TS_CONF_PATH:-$TS_PATH}"
