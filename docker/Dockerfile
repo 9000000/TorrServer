@@ -3,4 +3,5 @@ LABEL maintainer "9000000"
 RUN apk add --no-cache wget
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
+EXPOSE 8090
 ENTRYPOINT ["/bin/sh", "/start.sh"]
