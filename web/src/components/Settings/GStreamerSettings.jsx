@@ -271,12 +271,13 @@ export default function GStreamerSettings() {
       <FormGroup style={{ marginBottom: 20 }}>
         <InputLabel htmlFor='gstreamer-source'>{t('GStreamer.Source')}</InputLabel>
         <Select
+          native
           id='gstreamer-source'
+          name='gstreamer-source'
           value={gstreamerSettings.Source || 'stream'}
           onChange={e => updateField('Source', e.target.value)}
           variant='outlined'
           margin='dense'
-          fullWidth
         >
           <MenuItem value='stream'>{t('GStreamer.SourceStream')}</MenuItem>
           <MenuItem value='play'>{t('GStreamer.SourcePlay')}</MenuItem>
