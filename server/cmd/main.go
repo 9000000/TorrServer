@@ -27,31 +27,31 @@ import (
 )
 
 type args struct {
-	Port        string `arg:"-p" help:"web server port (default 8090)"`
+	Port        string   `arg:"-p" help:"web server port (default 8090)"`
 	IPs         []string `arg:"-i,--ip,separate" help:"web server bind addr (repeatable; default empty binds all interfaces)"`
-	Ssl         bool   `help:"enables https"`
-	SslPort     string `help:"web server ssl port, If not set, will be set to default 8091 or taken from db(if stored previously). Accepted if --ssl enabled."`
-	SslCert     string `help:"path to ssl cert file. If not set, will be taken from db(if stored previously) or default self-signed certificate/key will be generated. Accepted if --ssl enabled."`
-	SslKey      string `help:"path to ssl key file. If not set, will be taken from db(if stored previously) or default self-signed certificate/key will be generated. Accepted if --ssl enabled."`
-	Path        string `arg:"-d" help:"database and config dir path"`
-	LogPath     string `arg:"-l" help:"server log file path"`
-	WebLogPath  string `arg:"-w" help:"web access log file path"`
-	RDB         bool   `arg:"-r" help:"start in read-only DB mode"`
-	HttpAuth    bool   `arg:"-a" help:"enable http auth on all requests"`
-	DontKill    bool   `arg:"-k" help:"don't kill server on signal"`
-	UI          bool   `arg:"-u" help:"open torrserver page in browser"`
-	TorrentsDir string `arg:"-t" help:"autoload torrents from dir"`
-	TorrentAddr string `help:"Torrent client address, like 127.0.0.1:1337 (default :PeersListenPort)"`
-	PubIPv4     string `arg:"-4" help:"set public IPv4 addr"`
-	PubIPv6     string `arg:"-6" help:"set public IPv6 addr"`
-	SearchWA    bool   `arg:"-s" help:"search without auth"`
-	MaxSize     string `arg:"-m" help:"max allowed stream size (in Bytes)"`
-	TGToken     string `arg:"-T" help:"telegram bot token"`
-	FusePath    string `arg:"-f" help:"fuse mount path"`
-	WebDAV      bool   `help:"web dav enable"`
-	ProxyURL    string `help:"proxy URL for BitTorrent traffic (http, socks4, socks5, socks5h), e.g. socks5://user:password@127.0.0.1:8080"`
-	ProxyMode   string `help:"proxy mode: tracker (only HTTP trackers, default), peers (only peer connections), or full (all traffic)"`
-	ForceHTTPS  bool   `arg:"--force-https" help:"redirect all HTTP requests to HTTPS (requires --ssl)"`
+	Ssl         bool     `help:"enables https"`
+	SslPort     string   `help:"web server ssl port, If not set, will be set to default 8091 or taken from db(if stored previously). Accepted if --ssl enabled."`
+	SslCert     string   `help:"path to ssl cert file. If not set, will be taken from db(if stored previously) or default self-signed certificate/key will be generated. Accepted if --ssl enabled."`
+	SslKey      string   `help:"path to ssl key file. If not set, will be taken from db(if stored previously) or default self-signed certificate/key will be generated. Accepted if --ssl enabled."`
+	Path        string   `arg:"-d" help:"database and config dir path"`
+	LogPath     string   `arg:"-l" help:"server log file path"`
+	WebLogPath  string   `arg:"-w" help:"web access log file path"`
+	RDB         bool     `arg:"-r" help:"start in read-only DB mode"`
+	HttpAuth    bool     `arg:"-a" help:"enable http auth on all requests"`
+	DontKill    bool     `arg:"-k" help:"don't kill server on signal"`
+	UI          bool     `arg:"-u" help:"open torrserver page in browser"`
+	TorrentsDir string   `arg:"-t" help:"autoload torrents from dir"`
+	TorrentAddr string   `help:"Torrent client address, like 127.0.0.1:1337 (default :PeersListenPort)"`
+	PubIPv4     string   `arg:"-4" help:"set public IPv4 addr"`
+	PubIPv6     string   `arg:"-6" help:"set public IPv6 addr"`
+	SearchWA    bool     `arg:"-s" help:"search without auth"`
+	MaxSize     string   `arg:"-m" help:"max allowed stream size (in Bytes)"`
+	TGToken     string   `arg:"-T" help:"telegram bot token"`
+	FusePath    string   `arg:"-f" help:"fuse mount path"`
+	WebDAV      bool     `help:"web dav enable"`
+	ProxyURL    string   `help:"proxy URL for BitTorrent traffic (http, socks4, socks5, socks5h), e.g. socks5://user:password@127.0.0.1:8080"`
+	ProxyMode   string   `help:"proxy mode: tracker (only HTTP trackers, default), peers (only peer connections), or full (all traffic)"`
+	ForceHTTPS  bool     `arg:"--force-https" help:"redirect all HTTP requests to HTTPS (requires --ssl)"`
 }
 
 func (args) Version() string {
@@ -193,7 +193,6 @@ func main() {
 }
 
 func watchTDir(dir string) {
-
 	path, err := filepath.Abs(dir) // Attempt to convert the provided dir path into an absolute (full) filesystem path.
 	if err != nil {
 		path = dir

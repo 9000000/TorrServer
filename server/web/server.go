@@ -3,9 +3,10 @@ package web
 import (
 	"net"
 	"os"
+	"sort"
+
 	gstreamer "server/gstreamer/bridge"
 	"server/netbind"
-	"sort"
 
 	"server/torrfs/fuse"
 	"server/torrfs/webdav"
