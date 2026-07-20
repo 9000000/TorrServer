@@ -154,7 +154,7 @@ curl -s https://raw.githubusercontent.com/9000000/TorrServer/master/installTorrS
 Run in Terminal.app
 
 ```bash
-curl -s https://raw.githubusercontent.com/9000000/TorrServer/master/installTorrServerMac.sh -o installTorrserverMac.sh && chmod 755 installTorrServerMac.sh && bash ./installTorrServerMac.sh
+curl -s https://raw.githubusercontent.com/9000000/TorrServer/master/installTorrServerMac.sh -o installTorrServerMac.sh && chmod 755 installTorrServerMac.sh && bash ./installTorrServerMac.sh
 ```
 
 The macOS install script supports the same commands as the Linux script, including `--install`, `--update`, `--remove`, `--reconfigure`, and `--gst` for the GStreamer build (141.10+).

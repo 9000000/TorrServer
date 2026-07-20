@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/anacrolix/torrent"
@@ -29,14 +30,17 @@ type Cache struct {
 	pieceLength int64
 	pieceCount  int
 
+	// pieces content is immutable after Init; muPieces guards the map
+	// reference itself (nilled in Close), so holders of a snapshot may
+	// safely iterate it without the lock. BUG-2 fix: protects pieces map
 	pieces   map[int]*Piece
-	muPieces sync.RWMutex // BUG-2 fix: protects pieces map
+	muPieces sync.RWMutex
 
 	readers   map[*Reader]struct{}
-	muReaders sync.Mutex
+	muReaders sync.RWMutex
 
-	isRemove bool
-	isClosed bool
+	isRemove atomic.Bool
+	isClosed atomic.Bool
 	muRemove sync.Mutex
 	torrent  *torrent.Torrent
 
@@ -90,13 +94,28 @@ func (c *Cache) SetTorrent(torr *torrent.Torrent) {
 	c.torrent = torr
 }
 
-func (c *Cache) Piece(m metainfo.Piece) storage.PieceImpl {
+func (c *Cache) getPieces() map[int]*Piece {
 	c.muPieces.RLock()
 	defer c.muPieces.RUnlock()
-	if c.pieces == nil {
+	return c.pieces
+}
+
+func (c *Cache) readersSnapshot() []*Reader {
+	c.muReaders.RLock()
+	defer c.muReaders.RUnlock()
+	list := make([]*Reader, 0, len(c.readers))
+	for r := range c.readers {
+		list = append(list, r)
+	}
+	return list
+}
+
+func (c *Cache) Piece(m metainfo.Piece) storage.PieceImpl {
+	pieces := c.getPieces()
+	if pieces == nil {
 		return &PieceFake{}
 	}
-	if val, ok := c.pieces[m.Index()]; ok {
+	if val, ok := pieces[m.Index()]; ok {
 		return val
 	}
 	return &PieceFake{}
@@ -108,12 +127,9 @@ func (c *Cache) Close() error {
 	} else {
 		log.TLogln("Close cache for:", c.hash)
 	}
-	c.isClosed = true
+	c.isClosed.Store(true)
 
-	// MINOR-1 fix: lock storage.mu before accessing storage.caches
-	c.storage.mu.Lock()
-	delete(c.storage.caches, c.hash)
-	c.storage.mu.Unlock()
+	c.storage.removeCache(c.hash)
 
 	c.muPieces.Lock()
 	if settings.BTsets.RemoveCacheOnDrop {
@@ -140,21 +156,20 @@ func (c *Cache) Close() error {
 }
 
 func (c *Cache) removePiece(piece *Piece) {
-	if !c.isClosed {
+	if !c.isClosed.Load() {
 		piece.Release()
 	}
 }
 
 func (c *Cache) AdjustRA(readahead int64) {
+	if c == nil {
+		return
+	}
 	if settings.BTsets.CacheSize == 0 {
 		c.capacity = readahead * 3
 	}
-	if c.Readers() > 0 {
-		c.muReaders.Lock()
-		for r := range c.readers {
-			r.SetReadahead(readahead)
-		}
-		c.muReaders.Unlock()
+	for _, r := range c.readersSnapshot() {
+		r.SetReadahead(readahead)
 	}
 }
 
@@ -164,9 +179,9 @@ func (c *Cache) GetState() *state.CacheState {
 	piecesState := make(map[int]state.ItemState, 0)
 	var fill int64 = 0
 
-	c.muPieces.RLock()
-	if c.pieces != nil && len(c.pieces) > 0 {
-		for _, p := range c.pieces {
+	pieces := c.getPieces()
+	if pieces != nil && len(pieces) > 0 {
+		for _, p := range pieces {
 			pSize := p.GetSize() // BUG-1 fix: atomic read
 			if pSize > 0 {
 				fill += pSize
@@ -184,22 +199,17 @@ func (c *Cache) GetState() *state.CacheState {
 			}
 		}
 	}
-	c.muPieces.RUnlock()
 
 	readersState := make([]*state.ReaderState, 0)
 
-	if c.Readers() > 0 {
-		c.muReaders.Lock()
-		for r := range c.readers {
-			rng := r.getPiecesRange()
-			pc := r.getReaderPiece()
-			readersState = append(readersState, &state.ReaderState{
-				Start:  rng.Start,
-				End:    rng.End,
-				Reader: pc,
-			})
-		}
-		c.muReaders.Unlock()
+	for _, r := range c.readersSnapshot() {
+		rng := r.getPiecesRange()
+		pc := r.getReaderPiece()
+		readersState = append(readersState, &state.ReaderState{
+			Start:  rng.Start,
+			End:    rng.End,
+			Reader: pc,
+		})
 	}
 
 	c.filled = fill
@@ -214,10 +224,10 @@ func (c *Cache) GetState() *state.CacheState {
 }
 
 func (c *Cache) cleanPieces() {
-	if c.isRemove || c.isClosed {
+	if c.isRemove.Load() || c.isClosed.Load() {
 		return
 	}
-	
+
 	// Protection against concurrent deletion
 	if !c.muRemove.TryLock() {
 		return // Cleanup is already in progress in another goroutine
@@ -227,11 +237,11 @@ func (c *Cache) cleanPieces() {
 		c.muRemove.Unlock()
 		return
 	}
-	c.isRemove = true
+	c.isRemove.Store(true)
 	c.lastCleanTime = time.Now()
 	defer func() {
 		c.muRemove.Lock()
-		c.isRemove = false
+		c.isRemove.Store(false)
 		c.muRemove.Unlock()
 	}()
 	c.muRemove.Unlock()
@@ -259,13 +269,7 @@ func (c *Cache) cleanPieces() {
 }
 
 func (c *Cache) getRemPieces() []*Piece {
-	// Copy readers without a long lock (to prevent deadlock)
-	c.muReaders.Lock()
-	readers := make([]*Reader, 0, len(c.readers))
-	for r := range c.readers {
-		readers = append(readers, r)
-	}
-	c.muReaders.Unlock()
+	readers := c.readersSnapshot()
 
 	// Collect read ranges from active readers
 	ranges := make([]Range, 0)
@@ -289,14 +293,14 @@ func (c *Cache) getRemPieces() []*Piece {
 	piecesRemove := make([]*Piece, 0)
 	fill := int64(0)
 
-	// BUG-2 fix: lock pieces map during iteration
-	c.muPieces.RLock()
-	if c.pieces == nil {
-		c.muPieces.RUnlock()
+	pieces := c.getPieces()
+	if pieces == nil {
 		return piecesRemove
 	}
 
-	for id, p := range c.pieces {
+	// BUG-2 fix: lock pieces map during iteration
+	c.muPieces.RLock()
+	for id, p := range pieces {
 		pSize := p.GetSize() // BUG-1 fix: atomic read
 		if pSize > 0 {
 			fill += pSize
@@ -379,16 +383,12 @@ func (c *Cache) getRemPieces() []*Piece {
 }
 
 func (c *Cache) setLoadPriority(ranges []Range) {
-	c.muReaders.Lock()
-	defer c.muReaders.Unlock()
-	if c.torrent == nil {
+	readers := c.readersSnapshot()
+	pieces := c.getPieces()
+	if len(readers) == 0 || pieces == nil || c.torrent == nil {
 		return
 	}
-
-	c.muPieces.RLock()
-	defer c.muPieces.RUnlock()
-
-	for r := range c.readers {
+	for _, r := range readers {
 		if !r.isUse {
 			continue
 		}
@@ -398,7 +398,7 @@ func (c *Cache) setLoadPriority(ranges []Range) {
 		readerPos := r.getReaderPiece()
 		end := r.getPiecesRange().End
 		for i := readerPos; i < end; i++ {
-			p, ok := c.pieces[i]
+			p, ok := pieces[i]
 			if !ok {
 				continue
 			}
@@ -411,7 +411,6 @@ func (c *Cache) setLoadPriority(ranges []Range) {
 		}
 	}
 }
-
 
 func (c *Cache) isIdInFileBE(ranges []Range, id int) bool {
 	// keep 8/16 MB
@@ -449,8 +448,8 @@ func (c *Cache) GetUseReaders() int {
 	if c == nil {
 		return 0
 	}
-	c.muReaders.Lock()
-	defer c.muReaders.Unlock()
+	c.muReaders.RLock()
+	defer c.muReaders.RUnlock()
 	readers := 0
 	for reader := range c.readers {
 		if reader.isUse {
@@ -464,19 +463,17 @@ func (c *Cache) Readers() int {
 	if c == nil {
 		return 0
 	}
-	c.muReaders.Lock()
-	defer c.muReaders.Unlock()
-	if c.readers == nil {
-		return 0
-	}
+	c.muReaders.RLock()
+	defer c.muReaders.RUnlock()
 	return len(c.readers)
 }
 
 func (c *Cache) CloseReader(r *Reader) {
 	r.cache.muReaders.Lock()
-	r.Close()
 	delete(r.cache.readers, r)
 	r.cache.muReaders.Unlock()
+	// Reader.Close touches anacrolix internals, keep it outside muReaders
+	r.Close()
 	go c.clearPriority()
 }
 
@@ -488,23 +485,21 @@ func (c *Cache) clearPriority() {
 	// in cleanPieces already prevents excessive calls, and sleeping here
 	// just delays priority cleanup without providing real benefit.
 	ranges := make([]Range, 0)
-	c.muReaders.Lock()
-	for r := range c.readers {
+	for _, r := range c.readersSnapshot() {
 		r.checkReader()
 		if r.isUse {
 			ranges = append(ranges, r.getPiecesRange())
 		}
 	}
-	c.muReaders.Unlock()
 	ranges = mergeRange(ranges)
 
-	c.muPieces.RLock()
-	if c.pieces == nil {
-		c.muPieces.RUnlock()
+	pieces := c.getPieces()
+	if pieces == nil {
 		return
 	}
 	var keys []int
-	for id := range c.pieces {
+	c.muPieces.RLock()
+	for id := range pieces {
 		keys = append(keys, id)
 	}
 	c.muPieces.RUnlock()
