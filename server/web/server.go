@@ -3,9 +3,10 @@ package web
 import (
 	"net"
 	"os"
+	"sort"
+
 	gstreamer "server/gstreamer/bridge"
 	"server/netbind"
-	"sort"
 
 	"server/torrfs/fuse"
 	"server/torrfs/webdav"
@@ -17,6 +18,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/wlynxg/anet"
 
+	"server/bonjour"
 	"server/dlna"
 	"server/settings"
 	"server/web/msx"
@@ -89,6 +91,9 @@ func Start() {
 	if settings.BTsets.EnableDLNA {
 		dlna.Start()
 	}
+	if settings.BTsets.EnableBonjour {
+		bonjour.Start()
+	}
 
 	// Auto-mount FUSE filesystem if enabled
 	fuse.FuseAutoMount()
@@ -150,6 +155,7 @@ func Wait() error {
 func Stop() {
 	gstreamer.Stop()
 	dlna.Stop()
+	bonjour.Stop()
 	// Unmount FUSE filesystem if mounted
 	fuse.FuseCleanup()
 	BTS.Disconnect()
