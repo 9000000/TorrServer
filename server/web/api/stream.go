@@ -174,7 +174,7 @@ func stream(c *gin.Context) {
 	}
 	// preload torrent
 	if preload {
-		torr.Preload(tor, index)
+		go torr.Preload(tor, index)
 	}
 	// return stat if query
 	if stat {
@@ -299,7 +299,7 @@ func streamNoAuth(c *gin.Context) {
 	}
 	// preload torrent
 	if preload {
-		torr.Preload(tor, index)
+		go torr.Preload(tor, index)
 	}
 	// return m3u if query
 	if m3u {

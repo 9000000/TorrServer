@@ -297,5 +297,5 @@ func Preload(torr *Torrent, index int) {
 	if size > sets.BTsets.CacheSize {
 		size = sets.BTsets.CacheSize
 	}
-	torr.Preload(index, size)
+	go torr.Preload(index, size)
 }
