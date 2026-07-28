@@ -21,7 +21,6 @@ ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}" 
 
 WORKDIR /app
 
-# Tải TorrServer-LT linux-amd64 bản mới nhất từ Github Releases
 RUN wget -qO /usr/bin/torrserver "https://github.com/9000000/TorrServer-LT/releases/latest/download/TorrServer-LT-linux-amd64-gst" \
     && chmod +x /usr/bin/torrserver
 
