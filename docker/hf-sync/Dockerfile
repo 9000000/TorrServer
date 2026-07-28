@@ -1,4 +1,3 @@
-
 FROM ubuntu:24.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -14,31 +13,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gstreamer1.0-libav \
     && rm -rf /var/lib/apt/lists/*
 
+ENV PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}" \
+    TS_PORT=7860 \
+    TS_CONF_PATH="/data" \
+    TS_TORR_DIR="/tmp/ts/torrents" \
+    GODEBUG=madvdontneed=1
+
 WORKDIR /app
 
-RUN architecture=$(uname -m) && \
-    case $architecture in \
-        x86_64) arch="amd64" ;; \
-        aarch64) arch="arm64" ;; \
-        i386|i686) arch="386" ;; \
-        armv7|armv7l) arch="arm7" ;; \
-        *) echo "Unsupported arch: $architecture"; exit 1 ;; \
-    esac && \
-    echo "Tải TorrServer (GStreamer) bản: $arch" && \
-    wget -qO /usr/bin/torrserver "https://github.com/9000000/TorrServer/releases/latest/download/TorrServer-gst-linux-$arch" && \
-    chmod +x /usr/bin/torrserver
-
-ENV TS_PORT=7860
-ENV TS_CONF_PATH="/data"
-ENV TS_TORR_DIR="/tmp/ts/torrents"
-ENV TS_LOG_PATH="/tmp/ts/torr.log"
-ENV GODEBUG=madvdontneed=1
+# Tải TorrServer-LT linux-amd64 bản mới nhất từ Github Releases
+RUN wget -qO /usr/bin/torrserver "https://github.com/9000000/TorrServer-LT/releases/latest/download/TorrServer-LT-linux-amd64-gst" \
+    && chmod +x /usr/bin/torrserver
 
 RUN mkdir -p /tmp/ts/torrents && \
     chmod -R 777 /tmp/ts
 
 EXPOSE 7860
 
-CMD ["/usr/bin/torrserver", "--port", "7860", "--path", "/data", "--torrentsdir", "/tmp/ts/torrents", "--logpath", "/tmp/ts/torr.log"]
-
-
+CMD ["/usr/bin/torrserver", "--port", "7860", "--path", "/data", "--torrentsdir", "/tmp/ts/torrents"]
