@@ -80,6 +80,6 @@
   "license": "ISC",
   "homepage": "./",
   "resolutions": {
-    "eslint": "7.32.0"
+    "eslint": "^8.3.0"
   }
 }
