@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button, ButtonGroup } from '@material-ui/core'
 import ptt from 'parse-torrent-title'
 import axios from 'axios'
-import { viewedHost, torrentsHost } from 'utils/Hosts'
+import { viewedHost } from 'utils/Hosts'
 import { GETTING_INFO, IN_DB } from 'torrentStates'
 import CircularProgress from '@material-ui/core/CircularProgress'
 import { useTranslation } from 'react-i18next'
@@ -53,52 +53,17 @@ export default function DialogTorrentDetailsContent({ closeDialog, torrent }) {
     title,
     category,
     name,
-    stat: propStat,
-    download_speed: propDownloadSpeed,
-    upload_speed: propUploadSpeed,
-    torrent_size: propTorrentSize,
-    file_stats: propFileStats,
+    stat,
+    download_speed: downloadSpeed,
+    upload_speed: uploadSpeed,
+    torrent_size: torrentSize,
+    file_stats: torrentFileList,
   } = torrent
 
   const cache = useUpdateCache(hash)
   const settings = useGetSettings(cache)
 
   const { Capacity, PiecesCount, PiecesLength, Filled } = cache
-
-  // Use updated data from cache.Torrent when available (fixes "No playable files" when torrent info arrives after initial load)
-  const cacheTorrent = cache?.Torrent
-  const stat = cacheTorrent?.stat ?? propStat
-  const downloadSpeed = cacheTorrent?.download_speed ?? propDownloadSpeed
-  const uploadSpeed = cacheTorrent?.upload_speed ?? propUploadSpeed
-  const torrentSize = cacheTorrent?.torrent_size ?? propTorrentSize
-  const torrentFileList = cacheTorrent?.file_stats || propFileStats
-
-  // Direct polling: if file_stats is still null, actively fetch torrent status
-  useEffect(() => {
-    if (torrentFileList?.length) return // already have data
-
-    let active = true
-    const poll = () => {
-      if (!active) return
-      axios.post(torrentsHost(), { action: 'get', hash }).then(({ data }) => {
-        if (!active) return
-        if (data?.file_stats?.length) {
-          const playable = data.file_stats.filter(({ path }) => isFilePlayable(path))
-          if (playable.length > 0) {
-            setPlayableFileList(playable)
-          }
-        } else {
-          // Retry in 1 second
-          setTimeout(poll, 1000)
-        }
-      }).catch(() => {
-        if (active) setTimeout(poll, 2000)
-      })
-    }
-    // Start polling after a short delay (give cache a chance first)
-    const timer = setTimeout(poll, 500)
-    return () => { active = false; clearTimeout(timer) }
-  }, [hash, torrentFileList])
 
   useEffect(() => {
     if (playableFileList && seasonAmount === null) {
@@ -115,10 +80,7 @@ export default function DialogTorrentDetailsContent({ closeDialog, torrent }) {
   }, [playableFileList, seasonAmount])
 
   useEffect(() => {
-    const newPlayable = torrentFileList?.filter(({ path }) => isFilePlayable(path))
-    if (newPlayable?.length > 0 || !playableFileList?.length) {
-      setPlayableFileList(newPlayable)
-    }
+    setPlayableFileList(torrentFileList?.filter(({ path }) => isFilePlayable(path)))
   }, [torrentFileList])
 
   useEffect(() => {
@@ -141,7 +103,7 @@ export default function DialogTorrentDetailsContent({ closeDialog, torrent }) {
 
   const preloadPerc = settings?.PreloadCache
   const preloadSize = (Capacity / 100) * preloadPerc
-  const bufferSize = preloadSize > 15728640 ? preloadSize : 15728640 // Not less than 15MB
+  const bufferSize = preloadSize > 33554432 ? preloadSize : 33554432 // Not less than 32MB
 
   const getParsedTitle = () => {
     const newNameStringArr = []
@@ -242,7 +204,7 @@ export default function DialogTorrentDetailsContent({ closeDialog, torrent }) {
             <CacheSection>
               <SectionHeader>
                 <SectionTitle mb={20}>{t('Buffer')}</SectionTitle>
-                {bufferSize <= 15728640 && <SectionSubName>{t('BufferNote')}</SectionSubName>}
+                {bufferSize <= 33554432 && <SectionSubName>{t('BufferNote')}</SectionSubName>}
                 <LoadingProgress
                   value={Filled}
                   style={{ marginTop: '5px' }}

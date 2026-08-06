@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"time"
 
 	"server/log"
 	"server/settings"
@@ -23,9 +24,9 @@ func NewDiskPiece(p *Piece) *DiskPiece {
 	name := filepath.Join(settings.BTsets.TorrentsSavePath, p.cache.hash.HexString(), strconv.Itoa(p.Id))
 	ff, err := os.Stat(name)
 	if err == nil {
-		p.SetSize(ff.Size())
+		p.Size = ff.Size()
 		p.Complete = ff.Size() == p.cache.pieceLength
-		p.accessed = ff.ModTime().Unix()
+		p.Accessed = ff.ModTime().Unix()
 	}
 	return &DiskPiece{piece: p, name: name}
 }
@@ -42,20 +43,17 @@ func (p *DiskPiece) WriteAt(b []byte, off int64) (n int, err error) {
 	defer ff.Close()
 	n, err = ff.WriteAt(b, off)
 
-	// Use max(current, off+n) semantics to correctly handle re-written chunks
-	newSize := off + int64(n)
-	if newSize > p.piece.cache.pieceLength {
-		newSize = p.piece.cache.pieceLength
+	p.piece.Size += int64(n)
+	if p.piece.Size > p.piece.cache.pieceLength {
+		p.piece.Size = p.piece.cache.pieceLength
 	}
-	p.piece.SetSize(newSize)
-	p.piece.Touch()
+	p.piece.Accessed = time.Now().Unix()
 	return
 }
 
 func (p *DiskPiece) ReadAt(b []byte, off int64) (n int, err error) {
-	// BUG-5 fix: Use RLock for read-only operations to allow concurrent reads
-	p.mu.RLock()
-	defer p.mu.RUnlock()
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
 	ff, err := os.OpenFile(p.name, os.O_RDONLY, 0o666)
 	if os.IsNotExist(err) {
@@ -69,14 +67,9 @@ func (p *DiskPiece) ReadAt(b []byte, off int64) (n int, err error) {
 
 	n, err = ff.ReadAt(b, off)
 
-	p.piece.Touch()
-	if int64(len(b))+off >= p.piece.GetSize() {
+	p.piece.Accessed = time.Now().Unix()
+	if int64(len(b))+off >= p.piece.Size {
 		go p.piece.cache.cleanPieces()
-	}
-	// BUG-4 fix: Return actual I/O errors instead of swallowing them.
-	// Only suppress io.EOF from short reads at end of piece, which is normal.
-	if err == io.EOF && n > 0 {
-		return n, nil
 	}
 	return n, err
 }
@@ -85,9 +78,8 @@ func (p *DiskPiece) Release() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	p.piece.ResetSize()
+	p.piece.Size = 0
 	p.piece.Complete = false
 
 	os.Remove(p.name)
 }
-

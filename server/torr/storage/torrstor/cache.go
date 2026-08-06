@@ -32,7 +32,7 @@ type Cache struct {
 
 	// pieces content is immutable after Init; muPieces guards the map
 	// reference itself (nilled in Close), so holders of a snapshot may
-	// safely iterate it without the lock. BUG-2 fix: protects pieces map
+	// safely iterate it without the lock
 	pieces   map[int]*Piece
 	muPieces sync.RWMutex
 
@@ -43,23 +43,15 @@ type Cache struct {
 	isClosed atomic.Bool
 	muRemove sync.Mutex
 	torrent  *torrent.Torrent
-
-	// OPT-1 fix: debounce cleanPieces — at most once per interval
-	lastCleanTime time.Time
-	cleanInterval time.Duration
-
-	lastOSFreeTime time.Time
 }
 
 func NewCache(capacity int64, storage *Storage) *Cache {
 	ret := &Cache{
-		capacity:       capacity,
-		filled:         0,
-		pieces:         make(map[int]*Piece),
-		storage:        storage,
-		readers:        make(map[*Reader]struct{}),
-		cleanInterval:  500 * time.Millisecond, // OPT-1: debounce interval (500ms for faster response)
-		lastOSFreeTime: time.Now(),
+		capacity: capacity,
+		filled:   0,
+		pieces:   make(map[int]*Piece),
+		storage:  storage,
+		readers:  make(map[*Reader]struct{}),
 	}
 
 	return ret
@@ -83,11 +75,9 @@ func (c *Cache) Init(info *metainfo.Info, hash metainfo.Hash) {
 		}
 	}
 
-	c.muPieces.Lock()
 	for i := 0; i < c.pieceCount; i++ {
 		c.pieces[i] = NewPiece(i, c)
 	}
-	c.muPieces.Unlock()
 }
 
 func (c *Cache) SetTorrent(torr *torrent.Torrent) {
@@ -111,11 +101,7 @@ func (c *Cache) readersSnapshot() []*Reader {
 }
 
 func (c *Cache) Piece(m metainfo.Piece) storage.PieceImpl {
-	pieces := c.getPieces()
-	if pieces == nil {
-		return &PieceFake{}
-	}
-	if val, ok := pieces[m.Index()]; ok {
+	if val, ok := c.getPieces()[m.Index()]; ok {
 		return val
 	}
 	return &PieceFake{}
@@ -131,11 +117,10 @@ func (c *Cache) Close() error {
 
 	c.storage.removeCache(c.hash)
 
-	c.muPieces.Lock()
 	if settings.BTsets.RemoveCacheOnDrop {
 		name := filepath.Join(settings.BTsets.TorrentsSavePath, c.hash.HexString())
 		if name != "" && name != "/" {
-			for _, v := range c.pieces {
+			for _, v := range c.getPieces() {
 				if v.dPiece != nil {
 					os.Remove(v.dPiece.name)
 				}
@@ -143,15 +128,16 @@ func (c *Cache) Close() error {
 			os.Remove(name)
 		}
 	}
-	c.pieces = nil
-	c.muPieces.Unlock()
 
 	c.muReaders.Lock()
 	c.readers = nil
 	c.muReaders.Unlock()
 
-	// OPT-6 fix: only FreeOSMem (no forced GC) on close
-	utils.FreeOSMem()
+	c.muPieces.Lock()
+	c.pieces = nil
+	c.muPieces.Unlock()
+
+	utils.FreeOSMemGC()
 	return nil
 }
 
@@ -179,23 +165,15 @@ func (c *Cache) GetState() *state.CacheState {
 	piecesState := make(map[int]state.ItemState, 0)
 	var fill int64 = 0
 
-	pieces := c.getPieces()
-	if pieces != nil && len(pieces) > 0 {
-		for _, p := range pieces {
-			pSize := p.GetSize() // BUG-1 fix: atomic read
-			if pSize > 0 {
-				fill += pSize
-				priority := 0
-				if c.torrent != nil {
-					priority = int(c.torrent.PieceState(p.Id).Priority)
-				}
-				piecesState[p.Id] = state.ItemState{
-					Id:        p.Id,
-					Size:      pSize,
-					Length:    c.pieceLength,
-					Completed: p.Complete,
-					Priority:  priority,
-				}
+	for _, p := range c.getPieces() {
+		if p.Size > 0 {
+			fill += p.Size
+			piecesState[p.Id] = state.ItemState{
+				Id:        p.Id,
+				Size:      p.Size,
+				Length:    c.pieceLength,
+				Completed: p.Complete,
+				Priority:  int(c.torrent.PieceState(p.Id).Priority),
 			}
 		}
 	}
@@ -232,39 +210,22 @@ func (c *Cache) cleanPieces() {
 	if !c.muRemove.TryLock() {
 		return // Cleanup is already in progress in another goroutine
 	}
-	// OPT-1 fix: debounce — skip if called too recently
-	if time.Since(c.lastCleanTime) < c.cleanInterval {
-		c.muRemove.Unlock()
-		return
-	}
+	defer c.muRemove.Unlock()
+
 	c.isRemove.Store(true)
-	c.lastCleanTime = time.Now()
-	defer func() {
-		c.muRemove.Lock()
-		c.isRemove.Store(false)
-		c.muRemove.Unlock()
-	}()
-	c.muRemove.Unlock()
+	defer func() { c.isRemove.Store(false) }()
 
 	remPieces := c.getRemPieces()
-	releasedAny := false
 	if c.filled > c.capacity {
 		rems := (c.filled-c.capacity)/c.pieceLength + 1
 		for _, p := range remPieces {
 			c.removePiece(p)
-			releasedAny = true
 			rems--
 			if rems <= 0 {
-				break
+				utils.FreeOSMemGC()
+				return
 			}
 		}
-	}
-
-	// Memory protection mechanism: call FreeOSMemGC periodically when pieces are released
-	// and at least 10 seconds have elapsed since the last system memory free to avoid micro-stuttering.
-	if releasedAny && time.Since(c.lastOSFreeTime) > 10*time.Second {
-		c.lastOSFreeTime = time.Now()
-		go utils.FreeOSMemGC()
 	}
 }
 
@@ -273,19 +234,10 @@ func (c *Cache) getRemPieces() []*Piece {
 
 	// Collect read ranges from active readers
 	ranges := make([]Range, 0)
-	readaheadRanges := make([]Range, 0)
-	activeReadersPos := make([]int, 0)
-
 	for _, r := range readers {
 		r.checkReader()
 		if r.isUse {
 			ranges = append(ranges, r.getPiecesRange())
-			
-			readerPiece := r.getReaderPiece()
-			rahPiece := r.getReaderRAHPiece()
-			readaheadRanges = append(readaheadRanges, Range{Start: readerPiece, End: rahPiece})
-			
-			activeReadersPos = append(activeReadersPos, readerPiece)
 		}
 	}
 	ranges = mergeRange(ranges)
@@ -293,89 +245,31 @@ func (c *Cache) getRemPieces() []*Piece {
 	piecesRemove := make([]*Piece, 0)
 	fill := int64(0)
 
-	pieces := c.getPieces()
-	if pieces == nil {
-		return piecesRemove
-	}
-
-	// BUG-2 fix: lock pieces map during iteration
-	c.muPieces.RLock()
-	for id, p := range pieces {
-		pSize := p.GetSize() // BUG-1 fix: atomic read
-		if pSize > 0 {
-			fill += pSize
+	// Determine which chunks can be deleted
+	for id, p := range c.getPieces() {
+		if p.Size > 0 {
+			fill += p.Size
 		}
 		if len(ranges) > 0 {
 			if !inRanges(ranges, id) {
-				// Also protect pieces within the readahead window
-				if pSize > 0 && !c.isIdInFileBE(ranges, id) && !inRanges(readaheadRanges, id) {
+				if p.Size > 0 && !c.isIdInFileBE(ranges, id) {
 					piecesRemove = append(piecesRemove, p)
 				}
 			}
 		} else {
 			// When preloading, clear everything except the beginning and end of the file
-			if pSize > 0 && !c.isIdInFileBE(ranges, id) {
+			if p.Size > 0 && !c.isIdInFileBE(ranges, id) {
 				piecesRemove = append(piecesRemove, p)
 			}
 		}
 	}
-	c.muPieces.RUnlock()
 
 	c.clearPriority()
 	c.setLoadPriority(ranges)
 
 	// Sort by last access time (oldest first)
 	sort.Slice(piecesRemove, func(i, j int) bool {
-		pi := piecesRemove[i]
-		pj := piecesRemove[j]
-
-		// Apply streaming-optimized sorting if there are active readers
-		if len(activeReadersPos) > 0 {
-			isBehindI := true
-			isBehindJ := true
-			minDistI := int(^uint(0) >> 1) // Initialize with MaxInt
-			minDistJ := int(^uint(0) >> 1)
-
-			for _, rPos := range activeReadersPos {
-				if pi.Id >= rPos {
-					isBehindI = false
-					dist := pi.Id - rPos
-					if dist < minDistI {
-						minDistI = dist
-					}
-				}
-				if pj.Id >= rPos {
-					isBehindJ = false
-					dist := pj.Id - rPos
-					if dist < minDistJ {
-						minDistJ = dist
-					}
-				}
-			}
-
-			// Priority 1: Played pieces (behind all readers) should be evicted FIRST
-			if isBehindI && !isBehindJ {
-				return true // i is evicted before j
-			}
-			if !isBehindI && isBehindJ {
-				return false // j is evicted before i
-			}
-
-			// Priority 2: Both pieces are already played
-			if isBehindI && isBehindJ {
-				// Evict pieces further behind first (smaller Id)
-				return pi.Id < pj.Id
-			}
-
-			// Priority 3: Both pieces are ahead of readers (preloaded/upcoming pieces)
-			// Evict pieces further ahead first (larger distance from current reader)
-			if minDistI != minDistJ {
-				return minDistI > minDistJ
-			}
-		}
-
-		// Fallback: Evict oldest accessed pieces first
-		return pi.GetAccessed() < pj.GetAccessed()
+		return piecesRemove[i].Accessed < piecesRemove[j].Accessed
 	})
 
 	c.filled = fill
@@ -385,7 +279,7 @@ func (c *Cache) getRemPieces() []*Piece {
 func (c *Cache) setLoadPriority(ranges []Range) {
 	readers := c.readersSnapshot()
 	pieces := c.getPieces()
-	if len(readers) == 0 || pieces == nil || c.torrent == nil {
+	if len(readers) == 0 || pieces == nil {
 		return
 	}
 	for _, r := range readers {
@@ -396,17 +290,24 @@ func (c *Cache) setLoadPriority(ranges []Range) {
 			continue
 		}
 		readerPos := r.getReaderPiece()
+		readerRAHPos := r.getReaderRAHPiece()
 		end := r.getPiecesRange().End
-		for i := readerPos; i < end; i++ {
-			p, ok := pieces[i]
-			if !ok {
-				continue
-			}
-			if !p.Complete {
-				// Set all active pieces within the read range to have equal Normal priority
-				if c.torrent.PieceState(i).Priority != torrent.PiecePriorityNormal {
+		count := settings.BTsets.ConnectionsLimit / len(readers) // max concurrent loading blocks
+		limit := 0
+		for i := readerPos; i < end && limit < count; i++ {
+			if !pieces[i].Complete {
+				if i == readerPos {
+					c.torrent.Piece(i).SetPriority(torrent.PiecePriorityNow)
+				} else if i == readerPos+1 {
+					c.torrent.Piece(i).SetPriority(torrent.PiecePriorityNext)
+				} else if i > readerPos && i <= readerRAHPos {
+					c.torrent.Piece(i).SetPriority(torrent.PiecePriorityReadahead)
+				} else if i > readerRAHPos && i <= readerRAHPos+5 && c.torrent.PieceState(i).Priority != torrent.PiecePriorityHigh {
+					c.torrent.Piece(i).SetPriority(torrent.PiecePriorityHigh)
+				} else if i > readerRAHPos+5 && c.torrent.PieceState(i).Priority != torrent.PiecePriorityNormal {
 					c.torrent.Piece(i).SetPriority(torrent.PiecePriorityNormal)
 				}
+				limit++
 			}
 		}
 	}
@@ -420,9 +321,6 @@ func (c *Cache) isIdInFileBE(ranges []Range, id int) bool {
 	}
 
 	for _, rng := range ranges {
-		if rng.File == nil {
-			continue
-		}
 		ss := int(rng.File.Offset() / c.pieceLength)
 		se := int((rng.File.Offset() + FileRangeNotDelete) / c.pieceLength)
 
@@ -481,9 +379,7 @@ func (c *Cache) clearPriority() {
 	if c.torrent == nil {
 		return
 	}
-	// OPT-4 fix: removed time.Sleep(time.Second) — the debounce logic
-	// in cleanPieces already prevents excessive calls, and sleeping here
-	// just delays priority cleanup without providing real benefit.
+	time.Sleep(time.Second)
 	ranges := make([]Range, 0)
 	for _, r := range c.readersSnapshot() {
 		r.checkReader()
@@ -493,18 +389,7 @@ func (c *Cache) clearPriority() {
 	}
 	ranges = mergeRange(ranges)
 
-	pieces := c.getPieces()
-	if pieces == nil {
-		return
-	}
-	var keys []int
-	c.muPieces.RLock()
-	for id := range pieces {
-		keys = append(keys, id)
-	}
-	c.muPieces.RUnlock()
-
-	for _, id := range keys {
+	for id := range c.getPieces() {
 		if len(ranges) > 0 {
 			if !inRanges(ranges, id) {
 				if c.torrent.PieceState(id).Priority != torrent.PiecePriorityNone {
