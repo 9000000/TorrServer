@@ -27,6 +27,10 @@ const trackersFetchTimeout = 5 * time.Second
 // re-fetched in the background. On refresh failure the existing cache is kept.
 var trackersRefreshInterval = 12 * time.Hour
 
+// defaultTrackersListURLs is the built-in mirror chain. Tests stub this to
+// avoid hitting the network when a custom URL fails or is empty.
+var defaultTrackersListURLs = append([]string(nil), settings.DefaultTrackersListURLs...)
+
 var (
 	// fallbackTrackers is used when BTsets is nil or DefaultTrackers is empty (JNI/tests).
 	fallbackTrackers   = parseTrackerLines(settings.DefaultTrackersText)
@@ -204,11 +208,29 @@ func configuredDefaultTrackers() []string {
 	return out
 }
 
-func configuredTrackersListURL() string {
+func configuredTrackersListURLs() []string {
+	var custom string
 	if settings.BTsets != nil {
-		return strings.TrimSpace(settings.BTsets.TrackersListURL)
+		custom = strings.TrimSpace(settings.BTsets.TrackersListURL)
 	}
-	return settings.DefaultTrackersListURL
+
+	seen := make(map[string]struct{}, len(defaultTrackersListURLs)+1)
+	var urls []string
+	add := func(u string) {
+		if u == "" {
+			return
+		}
+		if _, ok := seen[u]; ok {
+			return
+		}
+		seen[u] = struct{}{}
+		urls = append(urls, u)
+	}
+	add(custom)
+	for _, u := range defaultTrackersListURLs {
+		add(u)
+	}
+	return urls
 }
 
 func startPrefetch() {
@@ -223,13 +245,13 @@ func startPrefetch() {
 	prefetchMu.Unlock()
 
 	local := configuredDefaultTrackers()
-	url := configuredTrackersListURL()
-	if url == "" {
+	urls := configuredTrackersListURLs()
+	if len(urls) == 0 {
 		setLoadedTrackers(gen, local, "")
 		return
 	}
 
-	go fetchTrackersAsync(gen, url, local)
+	go fetchTrackersAsync(gen, urls, local)
 }
 
 func setLoadedTrackers(gen uint64, trackers []string, logMsg string) {
@@ -248,14 +270,30 @@ func setLoadedTrackers(gen uint64, trackers []string, logMsg string) {
 	}
 }
 
-func fetchTrackersAsync(gen uint64, url string, local []string) {
-	merged, err := fetchTrackersFromURL(url, local)
+func fetchTrackersAsync(gen uint64, urls []string, local []string) {
+	merged, usedURL, err := fetchTrackersFromURLs(urls, local)
 	if err != nil {
 		setLoadedTrackers(gen, local, "trackerslist fetch failed, using DefaultTrackers: "+err.Error())
 		return
 	}
 	remoteCount := len(merged) - len(local)
-	setLoadedTrackers(gen, merged, fmt.Sprintf("trackerslist loaded: %d remote + %d local", remoteCount, len(local)))
+	setLoadedTrackers(gen, merged, fmt.Sprintf("trackerslist loaded from %s: %d remote + %d local", usedURL, remoteCount, len(local)))
+}
+
+func fetchTrackersFromURLs(urls []string, local []string) ([]string, string, error) {
+	if len(urls) == 0 {
+		return nil, "", fmt.Errorf("no trackers list URLs")
+	}
+	var errs []string
+	for _, url := range urls {
+		merged, err := fetchTrackersFromURL(url, local)
+		if err == nil {
+			return merged, url, nil
+		}
+		log.TLogln("trackerslist fetch failed (" + url + "): " + err.Error())
+		errs = append(errs, url+": "+err.Error())
+	}
+	return nil, "", fmt.Errorf("all URLs failed: %s", strings.Join(errs, "; "))
 }
 
 func fetchTrackersFromURL(url string, local []string) ([]string, error) {
@@ -289,23 +327,30 @@ func fetchTrackersFromURL(url string, local []string) ([]string, error) {
 func trackersRefreshLoop() {
 	for {
 		time.Sleep(trackersRefreshInterval)
-		url := configuredTrackersListURL()
-		if url == "" {
-			continue
-		}
-		gen := trackersFetchGen.Load()
-		local := configuredDefaultTrackers()
-		merged, err := fetchTrackersFromURL(url, local)
-		if err != nil {
-			log.TLogln("trackerslist refresh failed:", err.Error())
-			continue
-		}
-		if !updateLoadedTrackersIfCurrent(gen, merged) {
-			continue
-		}
-		remoteCount := len(merged) - len(local)
-		log.TLogln(fmt.Sprintf("trackerslist refreshed: %d remote + %d local", remoteCount, len(local)))
+		refreshTrackers()
 	}
+}
+
+// refreshTrackers re-fetches the remote trackers list once and replaces the
+// cache on success. On failure, or if the cache was invalidated meanwhile,
+// the existing cache is kept.
+func refreshTrackers() {
+	urls := configuredTrackersListURLs()
+	if len(urls) == 0 {
+		return
+	}
+	gen := trackersFetchGen.Load()
+	local := configuredDefaultTrackers()
+	merged, usedURL, err := fetchTrackersFromURLs(urls, local)
+	if err != nil {
+		log.TLogln("trackerslist refresh failed:", err.Error())
+		return
+	}
+	if !updateLoadedTrackersIfCurrent(gen, merged) {
+		return
+	}
+	remoteCount := len(merged) - len(local)
+	log.TLogln(fmt.Sprintf("trackerslist refreshed from %s: %d remote + %d local", usedURL, remoteCount, len(local)))
 }
 
 func updateLoadedTrackersIfCurrent(gen uint64, trackers []string) bool {
