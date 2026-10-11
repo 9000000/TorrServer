@@ -4,17 +4,26 @@ import (
 	"encoding/json"
 	"io"
 	"io/fs"
-
 	"path/filepath"
 	"strings"
 
 	"server/log"
 )
 
+type CategoryType string
+
+const (
+	CategoryDefault CategoryType = "default"
+	CategoryManual  CategoryType = "manual"
+	CategoryAll     CategoryType = "all"
+)
+
 type TorznabConfig struct {
-	Host string
-	Key  string
-	Name string
+	Host       string
+	Key        string
+	Name       string
+	Categories string
+	CatType    CategoryType
 }
 
 type TMDBConfig struct {
@@ -37,12 +46,17 @@ type BTSets struct {
 
 	// Torrent
 	ForceEncrypt             bool
-	RetrackersMode           int  // 0 - don`t add, 1 - add retrackers (def), 2 - remove retrackers 3 - replace retrackers
-	TorrentDisconnectTimeout int  // in seconds
-	EnableDebug              bool // debug logs
+	RetrackersMode           int    // 0 - don`t add, 1 - add retrackers (def), 2 - remove retrackers 3 - replace retrackers
+	TrackersListURL          string // optional custom remote trackers list URL; empty = use built-in mirrors; tried first, then mirrors
+	DefaultTrackers          string // newline-separated announce URLs used as local/fallback list
+	TorrentDisconnectTimeout int    // in seconds
+	EnableDebug              bool   // debug logs
 
 	// DLNA
-	EnableDLNA   bool
+	EnableDLNA bool
+	// Bonjour/mDNS LAN discovery (_torrserver, _http, _https)
+	EnableBonjour bool
+	// Shared name for DLNA and Bonjour
 	FriendlyName string
 
 	// Rutor
@@ -68,6 +82,10 @@ type BTSets struct {
 	ConnectionsLimit  int
 	PeersListenPort   int
 
+	// LPD
+	EnableLPD bool
+	LPDIPv6   bool
+
 	// HTTPS
 	SslPort int
 	SslCert string
@@ -83,15 +101,40 @@ type BTSets struct {
 	StoreSettingsInJson bool
 	StoreViewedInJson   bool
 
-	// P2P Proxy
-	EnableProxy bool
-	ProxyHosts  []string
+	// Viewed timecodes
+	TrackTimecode bool // store playback position (timecode) in viewed data
+
+	// M3U
+	MergeAllM3U bool // merge all torrents files into a single all.m3u playlist
 }
 
 func (v *BTSets) String() string {
 	buf, _ := json.Marshal(v)
 	return string(buf)
 }
+
+// DefaultTrackersListURLs is the built-in remote trackers list mirrors, tried in order.
+var DefaultTrackersListURLs = []string{
+	"https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best_ip.txt",
+	"https://ngosang.github.io/trackerslist/trackers_best_ip.txt",
+	"https://cdn.jsdelivr.net/gh/ngosang/trackerslist@master/trackers_best_ip.txt",
+	"https://raw.githack.com/ngosang/trackerslist/master/trackers_best_ip.txt",
+}
+
+const DefaultTrackersText = `http://retracker.local/announce
+http://bt4.t-ru.org/ann?magnet
+http://retracker.mgts.by:80/announce
+http://tracker.city9x.com:2710/announce
+http://tracker.electro-torrent.pl:80/announce
+http://tracker.internetwarriors.net:1337/announce
+http://tracker2.itzmx.com:6961/announce
+udp://opentor.org:2710
+udp://public.popcorn-tracker.org:6969/announce
+udp://tracker.opentrackr.org:1337/announce
+http://bt.svao-ix.ru/announce
+udp://explodie.org:6969/announce
+wss://tracker.btorrent.xyz
+wss://tracker.openwebtorrent.com`
 
 var BTsets *BTSets
 
@@ -160,11 +203,17 @@ func SetDefaultConfig() {
 	sets.PreloadCache = 50
 	sets.ConnectionsLimit = 25
 	sets.RetrackersMode = 1
+	sets.TrackersListURL = ""
+	sets.DefaultTrackers = DefaultTrackersText
 	sets.TorrentDisconnectTimeout = 30
 	sets.ReaderReadAHead = 95 // 95%
 	sets.ResponsiveMode = true
 	sets.ShowFSActiveTorr = true
 	sets.StoreSettingsInJson = true
+	sets.EnableLPD = true
+	sets.LPDIPv6 = false
+	sets.EnableBonjour = true
+	sets.MergeAllM3U = false
 	// Set default TMDB settings
 	sets.TMDBSettings = TMDBConfig{
 		APIKey:     "",
@@ -181,9 +230,6 @@ func SetDefaultConfig() {
 		}
 		tdb.Set("Settings", "BitTorr", buf)
 	}
-	//Proxy
-	sets.EnableProxy = false
-	sets.ProxyHosts = []string{"*themoviedb.org", "*tmdb.org", "rutor.info"}
 }
 
 func loadBTSets() {
@@ -202,6 +248,18 @@ func loadBTSets() {
 					ImageURL:   "https://image.tmdb.org",
 					ImageURLRu: "https://imagetmdb.com",
 				}
+			}
+			// Default Bonjour on for configs that predate the setting.
+			var raw map[string]json.RawMessage
+			if json.Unmarshal(buf, &raw) == nil {
+				if _, ok := raw["EnableBonjour"]; !ok {
+					BTsets.EnableBonjour = true
+				}
+			}
+			// Upgrade older configs that never had tracker list fields.
+			// Empty TrackersListURL now means "use built-in mirrors".
+			if BTsets.TrackersListURL == "" && BTsets.DefaultTrackers == "" {
+				BTsets.DefaultTrackers = DefaultTrackersText
 			}
 			return
 		}

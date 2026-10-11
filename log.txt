@@ -1,0 +1,57 @@
+ 56150K .......... .......... .......... ........ 100% 13.2M=5.9s
+
+2026-07-10T01:50:15.289Z82a9d2a7TS_PORT: 8090
+
+2026-07-10T01:50:15.290Z82a9d2a7Running with: --port 8090 --dontkill
+
+2026-07-10T01:50:15.290Z82a9d2a7TS_DONTKILL: 1
+
+2026-07-10T01:50:15.293Z82a9d2a72026/07/10 01:50:15 ffprobe and avprobe not found in $PATH
+
+2026-07-10T01:50:15.384Z82a9d2a7TorrServer MatriX.142.2, go1.25.11, CPU Num: 2
+
+2026-07-10T01:50:15.384Z82a9d2a7=========== START ===========
+
+2026-07-10T01:50:15.389Z82a9d2a72026/07/10 01:50:15 System DNS check passed
+
+2026-07-10T01:50:15.390Z82a9d2a72026/07/10 01:50:15 DNS resolution successful, addresses: [3.171.38.80 3.171.38.13 3.171.38.81 3.171.38.90 2600:9000:28a0:600:e:5373:440:93a1 2600:9000:28a0:a200:e:5373:440:93a1 2600:9000:28a0:8400:e:5373:440:93a1 2600:9000:28a0:c400:e:5373:440:93a1 2600:9000:28a0:bc00:e:5373:440:93a1 2600:9000:28a0:6e00:e:5373:440:93a1 2600:9000:28a0:0:e:5373:440:93a1 2600:9000:28a0:3600:e:5373:440:93a1]
+
+2026-07-10T01:50:15.393Z82a9d2a72026/07/10 01:50:15 No migration needed for Settings/BitTorr (already exists or no data)
+
+2026-07-10T01:50:15.394Z82a9d2a72026/07/10 01:50:15 Check web port 8090
+
+2026-07-10T01:50:15.394Z82a9d2a72026/07/10 01:50:15 Storage: Settings->JSON, Viewed->BBolt, Torrents->BBolt
+
+2026-07-10T01:50:15.394Z82a9d2a72026/07/10 01:50:15 XPathDBRouter: Registered new route "torrents" for DB "TDB", total 4 routes
+
+2026-07-10T01:50:15.394Z82a9d2a72026/07/10 01:50:15 XPathDBRouter: Registered new route "viewed" for DB "TDB", total 3 routes
+
+2026-07-10T01:50:15.394Z82a9d2a72026/07/10 01:50:15 XPathDBRouter: Registered new DB "TDB", total 2 DBs registered
+
+2026-07-10T01:50:15.394Z82a9d2a72026/07/10 01:50:15 XPathDBRouter: Registered new route "settings" for DB "JsonDB", total 2 routes
+
+2026-07-10T01:50:15.394Z82a9d2a72026/07/10 01:50:15 XPathDBRouter: Registered new route "default" for DB "JsonDB", total 1 routes
+
+2026-07-10T01:50:15.394Z82a9d2a72026/07/10 01:50:15 XPathDBRouter: Registered new DB "JsonDB", total 1 DBs registered
+
+2026-07-10T01:50:15.394Z82a9d2a72026/07/10 01:50:15 Viewed migration result: 0 migrated, 0 skipped
+
+2026-07-10T01:50:15.395Z82a9d2a72026/07/10 01:50:15 Client config: {"CacheSize":67108864,"ReaderReadAHead":95,"PreloadCache":50,"UseDisk":false,"TorrentsSavePath":"","RemoveCacheOnDrop":false,"ForceEncrypt":false,"RetrackersMode":1,"TorrentDisconnectTimeout":30,"EnableDebug":false,"EnableDLNA":false,"FriendlyName":"","EnableRutorSearch":false,"EnableTorznabSearch":false,"TorznabUrls":null,"TMDBSettings":{"APIKey":"","APIURL":"https://api.themoviedb.org","ImageURL":"https://image.tmdb.org","ImageURLRu":"https://imagetmdb.com"},"EnableIPv6":false,"DisableTCP":false,"DisableUTP":false,"DisableUPNP":false,"DisableDHT":false,"DisablePEX":false,"DisableUpload":false,"DownloadRateLimit":0,"UploadRateLimit":0,"ConnectionsLimit":25,"PeersListenPort":0,"EnableLPD":true,"LPDIPv6":false,"SslPort":0,"SslCert":"","SslKey":"","ResponsiveMode":true,"ShowFSActiveTorr":true,"StoreSettingsInJson":true,"StoreViewedInJson":false,"TrackTimecode":false}
+
+2026-07-10T01:50:15.395Z82a9d2a72026/07/10 01:50:15 Set listen port to random autoselect (0)
+
+2026-07-10T01:50:15.395Z82a9d2a72026/07/10 01:50:15 Local IPs: [172.17.0.15]
+
+2026-07-10T01:50:15.395Z82a9d2a72026/07/10 01:50:15 Start TorrServer MatriX.142.2 torrent v1.2.25
+
+2026-07-10T01:50:15.398Z82a9d2a7 msg="Multicasting on 172.17.0.15:55410\n"
+
+2026-07-10T01:50:15.398Z82a9d2a7[2026-07-10 01:50:15 +0000 NIL github.com/anacrolix/torrent bep14.go:197]
+
+2026-07-10T01:50:15.398Z82a9d2a72026/07/10 01:50:15 PublicIp4: 54.84.239.5
+
+2026-07-10T01:50:15.399Z82a9d2a72026/07/10 01:50:15 Start http server at :8090
+
+2026-07-10T01:50:32.295Z82a9d2a7 msg="dht server on 0.0.0.0:35075 (node id 6f7b6a90f8a0fb23a644c76fb34cd1c9c6c1772a) completed bootstrap ({49 27})"
+
+2026-07-10T01:50:32.295Z82a9d2a7[2026-07-10 01:50:32 +0000 NIL github.com/anacrolix/torrent client.go:367]

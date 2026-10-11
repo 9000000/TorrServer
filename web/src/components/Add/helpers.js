@@ -11,6 +11,37 @@ export const clearTMDBCache = () => {
   tmdbSettingsCache = null
 }
 
+const defaultTMDBSettings = () => ({
+  APIKey: process.env.REACT_APP_TMDB_API_KEY || '',
+  APIURL: 'https://api.themoviedb.org/3',
+  ImageURL: 'https://image.tmdb.org',
+  ImageURLRu: 'https://imagetmdb.com',
+})
+
+const mergeTMDBSettings = data => ({
+  ...defaultTMDBSettings(),
+  ...data,
+  // Build-time key is a fallback when server settings have no APIKey configured
+  APIKey: data?.APIKey || process.env.REACT_APP_TMDB_API_KEY || '',
+})
+
+const normalizeUrl = (url, fallback) => {
+  const trimmed = (url || fallback).trim().replace(/\/$/, '')
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+  return `https://${trimmed.replace(/^\/\//, '')}`
+}
+
+const buildTmdbSearchUrl = apiURL => {
+  let base = normalizeUrl(apiURL, 'https://api.themoviedb.org')
+
+  if (!base.includes('/3/search/multi')) {
+    base = base.replace(/\/3.*$/, '').replace(/\/search.*$/, '')
+    base = `${base}/3/search/multi`
+  }
+
+  return base
+}
+
 // Fetch TMDB settings from backend
 const getTMDBSettings = async () => {
   if (tmdbSettingsCache) {
@@ -19,15 +50,11 @@ const getTMDBSettings = async () => {
 
   try {
     const { data } = await axios.get(tmdbSettingsHost())
-    tmdbSettingsCache = data
-    return data
+    tmdbSettingsCache = mergeTMDBSettings(data)
+    return tmdbSettingsCache
   } catch (error) {
-    return {
-      APIKey: process.env.REACT_APP_TMDB_API_KEY || '',
-      APIURL: 'https://api.themoviedb.org/3',
-      ImageURL: 'https://image.tmdb.org',
-      ImageURLRu: 'https://imagetmdb.com',
-    }
+    tmdbSettingsCache = defaultTMDBSettings()
+    return tmdbSettingsCache
   }
 }
 
@@ -39,24 +66,12 @@ export const getMoviePosters = async (movieName, language = 'en') => {
     return null
   }
 
-  // Build API URL - automatically append /3/search/multi
-  let apiURL = settings.APIURL.replace(/^https?:\/\//, '').replace(/\/$/, '')
+  const url = buildTmdbSearchUrl(settings.APIURL)
 
-  // If URL doesn't already contain the full path, add /3/search/multi
-  if (!apiURL.includes('/3/search/multi')) {
-    // Remove any partial paths that might exist
-    apiURL = apiURL.replace(/\/3.*$/, '').replace(/\/search.*$/, '')
-    apiURL = `${apiURL}/3/search/multi`
-  }
-
-  const url = `${window.location.protocol}//${apiURL}`
-
-  // Build image URL - strip protocol and trailing slash
-  const imgHost = `${window.location.protocol}//${
-    language === 'ru'
-      ? settings.ImageURLRu.replace(/^https?:\/\//, '').replace(/\/$/, '')
-      : settings.ImageURL.replace(/^https?:\/\//, '').replace(/\/$/, '')
-  }`
+  const imgHost = normalizeUrl(
+    language === 'ru' ? settings.ImageURLRu : settings.ImageURL,
+    language === 'ru' ? 'https://imagetmdb.com' : 'https://image.tmdb.org',
+  )
 
   return axios
     .get(url, {
@@ -79,7 +94,7 @@ export const checkImageURL = async url => {
 }
 
 const magnetRegex = /^magnet:\?xt=urn:[a-z0-9].*/i
-export const hashRegex = /^\b[0-9a-f]{32}\b$|^\b[0-9a-f]{40}\b$|^\b[0-9a-f]{64}\b$/i
+const hashRegex = /^\b[0-9a-f]{32}\b$|^\b[0-9a-f]{40}\b$|^\b[0-9a-f]{64}\b$/i
 const torrentRegex = /^.*\.(torrent)$/i
 const linkRegex = /^(http(s?)):\/\/.*/i
 const torrsRegex = /^(torrs):\/\/.*/i
@@ -90,6 +105,44 @@ export const checkTorrentSource = source =>
   source.match(torrentRegex) !== null ||
   source.match(linkRegex) !== null ||
   source.match(torrsRegex) !== null
+
+/** Max length for TMDB/search API query; long torrent names exceed this. */
+const POSTER_SEARCH_MAX_LEN = 50
+/** Max words to use from title for poster search. */
+const POSTER_SEARCH_MAX_WORDS = 4
+
+/**
+ * Shortens a long torrent title for poster search (TMDB).
+ * Uses part before " [", " (", " / " and limits by words/length so the API gets a valid query.
+ * @param {string} fullTitle - Raw torrent title
+ * @param {{ maxWords?: number, maxLen?: number }} opts - Optional limits
+ * @returns {string} Short title suitable for getMoviePosters()
+ */
+export const shortenTitleForPosterSearch = (fullTitle, opts = {}) => {
+  const maxWords = opts.maxWords ?? POSTER_SEARCH_MAX_WORDS
+  const maxLen = opts.maxLen ?? POSTER_SEARCH_MAX_LEN
+  if (!fullTitle || typeof fullTitle !== 'string') return ''
+  const trimmed = fullTitle.trim()
+  if (!trimmed) return ''
+  let base = trimmed
+  for (const sep of [' [', ' (', ' / ']) {
+    const i = base.indexOf(sep)
+    if (i > 0) base = base.slice(0, i).trim()
+  }
+  try {
+    const parsed = ptt.parse(base)
+    if (parsed?.title && parsed.title.length <= maxLen + 15) base = parsed.title
+  } catch (_) {
+    // ignore
+  }
+  const words = base.split(/\s+/).filter(Boolean)
+  const byWords = words.slice(0, maxWords).join(' ')
+  if (byWords.length <= maxLen) return byWords.trim()
+  const cut = byWords.slice(0, maxLen)
+  const lastSpace = cut.lastIndexOf(' ')
+  const result = lastSpace > 0 ? cut.slice(0, lastSpace) : cut
+  return result.trim() || trimmed.slice(0, maxLen).trim()
+}
 
 export const parseTorrentTitle = (parsingSource, callback) => {
   parseTorrent.remote(parsingSource, (err, { name, files } = {}) => {

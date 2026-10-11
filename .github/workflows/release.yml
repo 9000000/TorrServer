@@ -55,6 +55,11 @@ on:
         required: false
         type: boolean
         default: false
+      gstreamer:
+        description: "🎥 GStreamer binaries (-gst-)"
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -76,9 +81,10 @@ jobs:
       BUILD_ANDROID_ARM64: ${{ github.event.inputs.android_arm64 || 'false' }}
       BUILD_ANDROID_ARM7: ${{ github.event.inputs.android_arm7 || 'false' }}
       BUILD_OTHER: ${{ github.event.inputs.other_platforms || 'false' }}
+      BUILD_GSTREAMER: ${{ github.event.inputs.gstreamer || 'false' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Show build configuration
         run: |
@@ -100,28 +106,29 @@ jobs:
             echo "Android ARM64:     ${BUILD_ANDROID_ARM64}"
             echo "Android ARM7:      ${BUILD_ANDROID_ARM7}"
             echo "Other platforms:   ${BUILD_OTHER}"
+            echo "GStreamer:         ${BUILD_GSTREAMER}"
           fi
           echo "========================================="
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: "1.24.0"
+          go-version: "1.25"
           check-latest: true
+          cache: true
+          cache-dependency-path: server/go.sum
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
           
-      - name: Build Web UI
-        working-directory: web
+      - name: Build Web UI & Generate Go Files
         env:
           CI: false
           SKIP_PREFLIGHT_CHECK: true
-        run: |
-          yarn install
-          NODE_OPTIONS=--openssl-legacy-provider yarn build
+          NODE_OPTIONS: --openssl-legacy-provider
+        run: go run gen_web.go --clean
 
       - name: Prepare upx
         run: chmod +x upx
@@ -167,13 +174,13 @@ jobs:
           echo "========================================="
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: TorrServer-Binaries
           path: dist/*
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         with:
           files: dist/*

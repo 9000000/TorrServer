@@ -7,8 +7,12 @@ import { SecondarySettingsContent, SettingSectionLabel } from './style'
 export default function MobileAppSettings({
   isVlcUsed,
   setIsVlcUsed,
+  showQuickVlcButton,
+  setShowQuickVlcButton,
   isInfuseUsed,
   setIsInfuseUsed,
+  isSenPlayerUsed,
+  setIsSenPlayerUsed,
   isIinaUsed,
   setIsIinaUsed,
 }) {
@@ -27,6 +31,19 @@ export default function MobileAppSettings({
           labelPlacement='start'
         />
         <FormHelperText margin='none'>{t('SettingsDialog.UseVLCHint')}</FormHelperText>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={showQuickVlcButton}
+              disabled={!isVlcUsed}
+              onChange={() => setShowQuickVlcButton(prev => !prev)}
+              color='secondary'
+            />
+          }
+          label={t('SettingsDialog.ShowQuickVLCButton')}
+          labelPlacement='start'
+        />
+        <FormHelperText margin='none'>{t('SettingsDialog.ShowQuickVLCButtonHint')}</FormHelperText>
         {isDesktopPlatform && (
           <FormHelperText margin='none'>
             {t('SettingsDialog.UseVLCDesktopHintPrefix')}{' '}
@@ -50,6 +67,22 @@ export default function MobileAppSettings({
               labelPlacement='start'
             />
             <FormHelperText margin='none'>{t('SettingsDialog.UseInfuseHint')}</FormHelperText>
+          </>
+        )}
+        {isApple && (
+          <>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={isSenPlayerUsed}
+                  onChange={() => setIsSenPlayerUsed(prev => !prev)}
+                  color='secondary'
+                />
+              }
+              label={t('SettingsDialog.UseSenPlayer')}
+              labelPlacement='start'
+            />
+            <FormHelperText margin='none'>{t('SettingsDialog.UseSenPlayerHint')}</FormHelperText>
           </>
         )}
         {isMac && (

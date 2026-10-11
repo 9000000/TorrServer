@@ -83,6 +83,17 @@ if should_build "${BUILD_OTHER}"; then
   ANDROID_COMPILERS+=("amd64:x86_64-linux-android21-clang")
 fi
 
+# GStreamer platforms
+GST_PLATFORMS=()
+if should_build "${BUILD_GSTREAMER:-true}"; then
+  GST_PLATFORMS=(
+    'linux/amd64'
+    'linux/arm64'
+    'darwin/amd64'
+    'darwin/arm64'
+  )
+fi
+
 echo "========================================="
 echo "  Build Configuration"
 echo "========================================="
@@ -104,10 +115,18 @@ done
 if [[ ${#ANDROID_COMPILERS[@]} -eq 0 ]]; then
   echo "  (none selected)"
 fi
+echo ""
+echo "GStreamer platforms to build:"
+for p in "${GST_PLATFORMS[@]}"; do
+  echo "  ✅ gst/${p}"
+done
+if [[ ${#GST_PLATFORMS[@]} -eq 0 ]]; then
+  echo "  (none selected)"
+fi
 echo "========================================="
 
 # Exit early if nothing to build
-if [[ ${#PLATFORMS[@]} -eq 0 ]] && [[ ${#ANDROID_COMPILERS[@]} -eq 0 ]]; then
+if [[ ${#PLATFORMS[@]} -eq 0 ]] && [[ ${#ANDROID_COMPILERS[@]} -eq 0 ]] && [[ ${#GST_PLATFORMS[@]} -eq 0 ]]; then
   echo "ERROR: No platforms selected for build!"
   exit 1
 fi
@@ -161,7 +180,7 @@ $GOBIN run gen_web.go
 echo "Build docs"
 $GOBIN install github.com/swaggo/swag/cmd/swag@latest
 cd "${ROOT}/server" || exit 1
-swag init -g web/server.go
+swag init -g web/server.go --parseInternal --parseDepth 5
 
 #### Build server
 echo "Build server"
@@ -185,12 +204,87 @@ if [[ ${#PLATFORMS[@]} -gt 0 ]]; then
     set_gomips "$GOARCH"
     BIN_FILENAME="${OUTPUT}-${GOOS}-${GOARCH}${GOARM}"
     if [[ "${GOOS}" == "windows" ]]; then BIN_FILENAME="${BIN_FILENAME}.exe"; fi
-    CMD="GOOS=${GOOS} GOARCH=${GOARCH} ${GO_ARM} ${GO_MIPS} ${GOBIN} build ${BUILD_FLAGS} -o ${BIN_FILENAME} ./cmd"
+    CMD="GOOS=${GOOS} GOARCH=${GOARCH} ${GO_ARM} ${GO_MIPS} CGO_ENABLED=0 ${GOBIN} build ${BUILD_FLAGS} -o ${BIN_FILENAME} ./cmd"
     echo "${CMD}"
     eval "$CMD" || FAILURES="${FAILURES} ${GOOS}/${GOARCH}${GOARM}"
   #  CMD="../upx -q ${BIN_FILENAME}"; # upx --brute produce much smaller binaries
   #  echo "compress with ${CMD}"
   #  eval "$CMD"
+  done
+fi
+
+echo "Build AppImages"
+
+APPIMAGE_TOOL="${ROOT}/appimagetool"
+
+if [[ ! -x "${APPIMAGE_TOOL}" ]]; then
+  curl -L -o "${APPIMAGE_TOOL}" \
+    "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+  chmod +x "${APPIMAGE_TOOL}"
+fi
+
+build_appimage() {
+  local ARCH_NAME="$1"
+  local BINARY="$2"
+  local APPIMAGE_ARCH="$3"
+  local APPDIR="${ROOT}/TorrServer.AppDir"
+
+  rm -rf "${APPDIR}"
+  mkdir -p "${APPDIR}/usr/bin"
+
+  cp "${OUTPUT}-${BINARY}" "${APPDIR}/usr/bin/torrserver"
+  chmod +x "${APPDIR}/usr/bin/torrserver"
+
+  cat > "${APPDIR}/torrserver.desktop" <<'EOF'
+[Desktop Entry]
+Name=TorrServer
+Comment=Torrent streaming server
+Exec=torrserver
+Icon=torrserver
+Type=Application
+Categories=Network;FileTransfer;
+Terminal=true
+EOF
+
+  cp "${ROOT}/web/public/icon.png" "${APPDIR}/torrserver.png"
+
+  cat > "${APPDIR}/AppRun" <<'EOF'
+#!/bin/bash
+HERE="$(dirname "$(readlink -f "${0}")")"
+exec "${HERE}/usr/bin/torrserver" "$@"
+EOF
+
+  chmod +x "${APPDIR}/AppRun"
+
+  ARCH="${APPIMAGE_ARCH}" \
+    "${APPIMAGE_TOOL}" \
+    "${APPDIR}" \
+    "${OUTPUT}-linux-${ARCH_NAME}.AppImage"
+
+  rm -rf "${APPDIR}"
+}
+
+build_appimage "amd64" "linux-amd64" "x86_64"
+build_appimage "arm64" "linux-arm64" "aarch64"
+build_appimage "arm7" "linux-arm7" "armhf"
+
+#####################################
+### GStreamer build section
+#####
+
+if [[ ${#GST_PLATFORMS[@]} -gt 0 ]]; then
+  echo ""
+  echo ">>> Building GStreamer server platforms..."
+  BUILD_FLAGS_GST="-ldflags=${LDFLAGS} -tags=nosqlite,gst -trimpath"
+
+  for PLATFORM in "${GST_PLATFORMS[@]}"; do
+    GOOS=${PLATFORM%/*}
+    GOARCH=${PLATFORM#*/}
+    BIN_FILENAME="${OUTPUT}-gst-${GOOS}-${GOARCH}"
+    if [[ "${GOOS}" == "windows" ]]; then BIN_FILENAME="${BIN_FILENAME}.exe"; fi
+    CMD="GOOS=${GOOS} GOARCH=${GOARCH} CGO_ENABLED=0 ${GOBIN} build ${BUILD_FLAGS_GST} -o ${BIN_FILENAME} ./cmd"
+    echo "${CMD}"
+    eval "$CMD" || FAILURES="${FAILURES} gst/${GOOS}/${GOARCH}"
   done
 fi
 
@@ -202,7 +296,7 @@ if [[ ${#ANDROID_COMPILERS[@]} -gt 0 ]]; then
   echo ""
   echo ">>> Building Android platforms..."
 
-  export NDK_VERSION="25.2.9519653"
+  export NDK_VERSION="27.0.12077973"
   # Auto-detect NDK toolchain path
   if [[ -n "${ANDROID_NDK_HOME}" ]]; then
     export NDK_TOOLCHAIN="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64"

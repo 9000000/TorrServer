@@ -8,12 +8,14 @@ import (
 	"sync"
 	"time"
 
-	tele "gopkg.in/telebot.v4"
+	"server/bonjour"
 	"server/dlna"
 	"server/rutor"
 	"server/settings"
 	"server/torr"
 	"server/torznab"
+
+	tele "gopkg.in/telebot.v4"
 )
 
 const pendingInputTTL = 30 * time.Minute
@@ -144,29 +146,27 @@ func applySettingsInput(c tele.Context, setting, value string) {
 	case "tmdbkey":
 		sets.TMDBSettings.APIKey = value
 		_ = c.Send(fmt.Sprintf(tr(uid, "settings_input_done"), "TMDB API Key", valueOrClear(value)))
-	case "proxyhosts":
-		if value == "" {
-			sets.ProxyHosts = nil
-		} else {
-			parts := strings.Split(value, ",")
-			for i := range parts {
-				parts[i] = strings.TrimSpace(parts[i])
-			}
-			sets.ProxyHosts = parts
-		}
-		_ = c.Send(fmt.Sprintf(tr(uid, "settings_input_done"), "ProxyHosts", valueOrClear(value)))
 	case "torznab_add":
 		if value == "" {
 			_ = c.Send(tr(uid, "settings_input_torznab_usage"))
 			return
 		}
-		parts := strings.SplitN(value, "|", 3)
+		parts := strings.Split(value, "|")
 		cfg := settings.TorznabConfig{Host: strings.TrimSpace(parts[0])}
 		if len(parts) > 1 {
 			cfg.Key = strings.TrimSpace(parts[1])
 		}
 		if len(parts) > 2 {
 			cfg.Name = strings.TrimSpace(parts[2])
+		}
+		if len(parts) > 3 {
+			cfg.Categories = strings.TrimSpace(parts[3])
+		}
+		if len(parts) > 4 {
+			cfg.CatType = settings.CategoryType(strings.TrimSpace(parts[4]))
+		}
+		if cfg.CatType == "" {
+			cfg.CatType = settings.CategoryDefault
 		}
 		if !strings.HasPrefix(cfg.Host, "http") {
 			cfg.Host = "https://" + cfg.Host
@@ -202,6 +202,10 @@ func applySettingsInput(c tele.Context, setting, value string) {
 	dlna.Stop()
 	if sets.EnableDLNA {
 		dlna.Start()
+	}
+	bonjour.Stop()
+	if sets.EnableBonjour {
+		bonjour.Start()
 	}
 	rutor.Stop()
 	rutor.Start()

@@ -20,6 +20,9 @@ type Reader struct {
 	cache    *Cache
 	isClosed bool
 
+	// inFlight counts reads and seeks inside the underlying reader; guarded by mu.
+	inFlight int
+
 	///Preload
 	lastAccess int64
 	isUse      bool
@@ -53,7 +56,8 @@ func (r *Reader) Seek(offset int64, whence int) (n int64, err error) {
 	case io.SeekEnd:
 		r.offset = r.file.Length() + offset
 	}
-	r.readerOn()
+	r.beginIO()
+	defer r.endIO()
 	n, err = r.Reader.Seek(offset, whence)
 	r.offset = n
 	r.lastAccess = time.Now().Unix()
@@ -66,7 +70,8 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 		return
 	}
 	if r.file.Torrent() != nil && r.file.Torrent().Info() != nil {
-		r.readerOn()
+		r.beginIO()
+		defer r.endIO()
 		n, err = r.Reader.Read(p)
 
 		// samsung tv fix xvid/divx
@@ -161,16 +166,36 @@ func (r *Reader) getOffsetRange() (int64, int64) {
 }
 
 func (r *Reader) checkReader() {
-	if time.Now().Unix() > r.lastAccess+60 && len(r.cache.readers) > 1 {
+	if time.Now().Unix() > r.lastAccess+60 && r.cache.Readers() > 1 {
 		r.readerOff()
 	} else {
 		r.readerOn()
 	}
 }
 
+// beginIO claims the reader for one read or seek and resumes it if the sweep parked it.
+// Registering under mu is what keeps readerOff from parking it until endIO.
+func (r *Reader) beginIO() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.inFlight++
+	r.resume()
+}
+
+func (r *Reader) endIO() {
+	r.mu.Lock()
+	r.inFlight--
+	r.mu.Unlock()
+}
+
 func (r *Reader) readerOn() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	r.resume()
+}
+
+// resume must be called with mu held.
+func (r *Reader) resume() {
 	if !r.isUse {
 		if pos, err := r.Reader.Seek(0, io.SeekCurrent); err == nil && pos == 0 {
 			r.Reader.Seek(r.offset, io.SeekStart)
@@ -183,6 +208,11 @@ func (r *Reader) readerOn() {
 func (r *Reader) readerOff() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	// lastAccess is stamped only when a read returns, so a read blocked on the swarm makes a
+	// busy reader look idle; seeking the anacrolix reader under it moves that read.
+	if r.inFlight > 0 {
+		return
+	}
 	if r.isUse {
 		r.SetReadahead(0)
 		r.isUse = false
@@ -193,13 +223,5 @@ func (r *Reader) readerOff() {
 }
 
 func (r *Reader) getUseReaders() int {
-	readers := 0
-	if r.cache != nil {
-		for reader := range r.cache.readers {
-			if reader.isUse {
-				readers++
-			}
-		}
-	}
-	return readers
+	return r.cache.GetUseReaders()
 }

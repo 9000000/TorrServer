@@ -46,14 +46,19 @@ allowing the cache size to be adjusted according to the system parameters and th
 - Local and Remote Server
 - Viewing torrents on various devices
 - Integration with other apps through API
+- Torznab search (Jackett, Prowlarr, and similar indexer managers)
 - Cross-browser modern web interface
 - Optional DLNA server
+- Optional GStreamer HLS remuxing and transcoding (`-gst` builds from release 141.10)
+- Native [MCP](server/mcp/README.md) server for AI agents (OpenClaw, Hermes, and other MCP clients)
 
 ## Getting Started
 
 ### Installation
 
-Download the application for the required platform in the [releases](https://github.com/9000000/TorrServer/releases) page. After installation, open the link <http://127.0.0.1:8090> in the browser.
+Download the application for the required platform in the [releases](https://github.com/9000000/TorrServer/releases) page. After installation, open the link <http://127.0.0.1:8090> in the browser. iOS is shipped as `TorrServer-ios-TorrServerKit.xcframework.zip` for embedding in a host app (see [Build → iOS](#ios)).
+
+Standard binaries are named `TorrServer-<platform>-<arch>` (for example, `TorrServer-linux-amd64`). From release **141.10**, optional **GStreamer (gst)** builds are named `TorrServer-gst-<platform>-<arch>`. Supported gst targets are Windows amd64, Linux amd64/arm64, and macOS amd64/arm64. The install scripts below can install either variant when the matching release asset is available.
 
 #### Windows
 
@@ -61,36 +66,54 @@ Run `TorrServer-windows-amd64.exe`.
 
 #### Linux
 
-Run in console
+**Interactive install** (download first — preferred):
 
 ```bash
-curl -s https://raw.githubusercontent.com/9000000/TorrServer/main/installTorrServerLinux.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/9000000/TorrServer/master/installTorrServerLinux.sh -o installTorrServerLinux.sh && chmod 755 installTorrServerLinux.sh && sudo bash ./installTorrServerLinux.sh
+```
+
+Other interactive one-liners (avoid `curl | sudo bash`, which hangs on modern `sudo` with `use_pty`):
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/9000000/TorrServer/master/installTorrServerLinux.sh)"
+```
+
+```bash
+sudo bash <(curl -fsSL https://raw.githubusercontent.com/9000000/TorrServer/master/installTorrServerLinux.sh)
+```
+
+**Non-interactive** pipe is fine when there are no prompts:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/9000000/TorrServer/master/installTorrServerLinux.sh | sudo bash -s -- --install --silent
 ```
 
 The script supports interactive and non-interactive installation, configuration, updates, and removal. When running the script interactively, you can:
 
 - **Install/Update**: Choose to install or update TorrServer
+- **GStreamer build**: For releases 141.10+ on amd64/arm64, choose the gst build with transcoding support (or pass `--gst`)
 - **Reconfigure**: If TorrServer is already installed, you'll be prompted to reconfigure settings (port, auth, read-only mode, logging, BBR)
 - **Uninstall**: Type `Delete` (or `Удалить` in Russian) to uninstall TorrServer
-
-**Download first and set execute permissions:**
-
-```bash
-curl -s https://raw.githubusercontent.com/9000000/TorrServer/main/installTorrServerLinux.sh -o installTorrServerLinux.sh && chmod 755 installTorrServerLinux.sh
-```
 
 **Command-line examples:**
 
 - Install a specific version:
 
   ```bash
-  sudo bash ./installTorrServerLinux.sh --install --silent
+  sudo bash ./installTorrServerLinux.sh --install 135 --silent
   ```
 
 - Update to latest version:
 
   ```bash
   sudo bash ./installTorrServerLinux.sh --update --silent
+  ```
+
+- Install GStreamer build (141.10+):
+
+  ```bash
+  sudo bash ./installTorrServerLinux.sh --install --gst
+  sudo bash ./installTorrServerLinux.sh --update --gst --silent
   ```
 
 - Reconfigure settings interactively:
@@ -132,6 +155,7 @@ curl -s https://raw.githubusercontent.com/9000000/TorrServer/main/installTorrSer
 - `--down VERSION` - Downgrade to specific version
 - `--remove` - Uninstall TorrServer
 - `--change-user USER` - Change service user (root|torrserver)
+- `--gst` - Install GStreamer build with transcoding support (141.10+, amd64/arm64 only)
 - `--root` - Run service as root user
 - `--silent` - Non-interactive mode with defaults
 - `--help` - Show help message
@@ -141,8 +165,30 @@ curl -s https://raw.githubusercontent.com/9000000/TorrServer/main/installTorrSer
 Run in Terminal.app
 
 ```bash
-curl -s https://raw.githubusercontent.com/9000000/TorrServer/main/installTorrServerMac.sh -o installTorrserverMac.sh && chmod 755 installTorrServerMac.sh && bash ./installTorrServerMac.sh
+curl -s https://raw.githubusercontent.com/9000000/TorrServer/master/installTorrServerMac.sh -o installTorrServerMac.sh && chmod 755 installTorrServerMac.sh && bash ./installTorrServerMac.sh
 ```
+
+The macOS install script supports the same commands as the Linux script, including `--install`, `--update`, `--remove`, `--reconfigure`, and `--gst` for the GStreamer build (141.10+).
+
+**Command-line examples:**
+
+- Install latest version:
+
+  ```bash
+  bash ./installTorrServerMac.sh --install
+  ```
+
+- Install GStreamer build:
+
+  ```bash
+  bash ./installTorrServerMac.sh --install --gst
+  ```
+
+- Update silently:
+
+  ```bash
+  bash ./installTorrServerMac.sh --update --silent
+  ```
 
 Alternative install script for Intel Macs: <https://github.com/dancheskus/TorrServerMacInstaller>
 
@@ -158,28 +204,32 @@ On FreeBSD (TrueNAS/FreeNAS) you can use this plugin: <https://github.com/filka9
 ### Server args
 
 - `--port PORT`, `-p PORT` - web server port (default 8090)
-- `--ip IP`, `-i IP` - web server addr (default empty, binds to all interfaces)
-- `--ssl` - enables https for web server
+- `--ip IP`, `-i IP` - web server bind addr (repeatable; default empty binds to all interfaces)
+- `--ssl` - enables HTTPS for web server
 - `--sslport PORT` -  web server https port (default 8091). If not set, will be taken from db (if stored previously) or the default will be used.
-- `--sslcert PATH` -  path to ssl cert file. If not set, will be taken from db (if stored previously) or default self-signed certificate/key will be generated.
-- `--sslkey PATH` - path to ssl key file. If not set, will be taken from db (if stored previously) or default self-signed certificate/key will be generated.
+- `--sslcert PATH` -  path to SSL cert file. If not set, will be taken from db (if stored previously) or default self-signed certificate/key will be generated. Replacing the cert/key files (e.g. a certbot renewal) takes effect without a restart. An invalid user-supplied cert stops startup instead of being replaced.
+- `--sslkey PATH` - path to SSL key file. If not set, will be taken from db (if stored previously) or default self-signed certificate/key will be generated.
+- `--force-https` - with `--ssl`, the HTTP listener (`--port`) answers every request with **307 Temporary Redirect** to the same path on HTTPS (`--sslport`). Requires `--ssl` (startup fails if `--force-https` is set without `--ssl`). Default is off. Media players and TVs usually can't use a self-signed certificate, see [HTTPS](#https).
+- `--http-media` - with `--force-https`, keep serving media URLs (`/stream`, `/play`, `/playlist`, `/playlistall`, which DLNA also uses, and GStreamer HLS under `/gst/<hash>/`) over plain HTTP for players that can't use HTTPS; everything else still redirects. Stream URLs and Basic auth credentials then travel unencrypted, so only use it on a trusted network and never expose the HTTP port to the internet. Requires `--force-https`.
+- `--https-only` - with `--ssl`, don't open the plain HTTP port (`--port`) at all: the UI, API, media, DLNA links and Bonjour all use HTTPS on `--sslport`. Unlike `--force-https`, clients using the usual `http://host:<port>` address can't send credentials or requests over plain HTTP before being redirected. Use it with a trusted certificate, see [HTTPS](#https); with the self-signed one, players and TVs won't play. Requires `--ssl`; can't be combined with `--http-media`.
+
 - `--path PATH`, `-d PATH` - database and config dir path
 - `--logpath LOGPATH`, `-l LOGPATH` - server log file path
 - `--weblogpath WEBLOGPATH`, `-w WEBLOGPATH` - web access log file path
 - `--rdb`, `-r` - start in read-only DB mode
-- `--httpauth`, `-a` - enable http auth on all requests
+- `--httpauth`, `-a` - enable HTTP Auth on all requests
 - `--dontkill`, `-k` - don't kill server on signal
 - `--ui`, `-u` - open torrserver page in browser
 - `--torrentsdir TORRENTSDIR`, `-t TORRENTSDIR` - autoload torrents from dir
-- `--torrentaddr TORRENTADDR` - Torrent client address (format [IP]:PORT, ex. :32000, 127.0.0.1:32768 etc)
+- `--torrentaddr TORRENTADDR` - Torrent client address (format [IP]:PORT, ex. :32000, 127.0.0.1:32768 etc.)
 - `--pubipv4 PUBIPV4`, `-4 PUBIPV4` - set public IPv4 addr
 - `--pubipv6 PUBIPV6`, `-6 PUBIPV6` - set public IPv6 addr
 - `--searchwa`, `-s` - allow search without authentication
 - `--maxsize MAXSIZE`, `-m MAXSIZE` - max allowed stream size (in Bytes)
 - `--tg TGTOKEN`, `-T TGTOKEN` - [Telegram bot](server/tgbot/README.md) token
-- `--fuse FUSEPATH`, `-f FUSEPATH` - fuse mount path
-- `--webdav` - enable web dav
-- `--proxyurl PROXYURL` - set proxy URL for BitTorrent traffic (http, socks4, socks5, socks5h), example: socks5h://user:password@example.com:2080
+- `--fuse FUSEPATH`, `-f FUSEPATH` - FUSE mount path
+- `--webdav` - enable WebDAV
+- `--proxyurl PROXYURL` - set proxy URL for BitTorrent traffic (HTTP, SOCKS4, SOCKS5, SOCKS5H), example: socks5h://user:password@example.com:2080
 - `--proxymode PROXYMODE` - set proxy mode: "tracker" (only HTTP trackers, default), "peers" (only peer connections), or "full" (all traffic)
 - `--help`, `-h` - display this help and exit
 - `--version` - display version and exit
@@ -187,7 +237,7 @@ On FreeBSD (TrueNAS/FreeNAS) you can use this plugin: <https://github.com/filka9
 Example:
 
 ```bash
-TorrServer-darwin-arm64 [--port PORT] [--ip IP] [--path PATH] [--logpath LOGPATH] [--weblogpath WEBLOGPATH] [--rdb] [--httpauth] [--dontkill] [--ui] [--torrentsdir TORRENTSDIR] [--torrentaddr TORRENTADDR] [--pubipv4 PUBIPV4] [--pubipv6 PUBIPV6] [--searchwa] [--maxsize MAXSIZE] [--tg TGTOKEN] [--fuse FUSEPATH] [--webdav]
+TorrServer-darwin-arm64 [--port PORT] [--ip IP ...] [--path PATH] [--logpath LOGPATH] [--weblogpath WEBLOGPATH] [--rdb] [--httpauth] [--dontkill] [--ui] [--torrentsdir TORRENTSDIR] [--torrentaddr TORRENTADDR] [--pubipv4 PUBIPV4] [--pubipv6 PUBIPV6] [--searchwa] [--maxsize MAXSIZE] [--tg TGTOKEN] [--fuse FUSEPATH] [--webdav] [--ssl] [--sslport PORT] [--sslcert PATH] [--sslkey PATH] [--force-https] [--http-media] [--https-only]
 ```
 
 ### Running in Docker & Docker Compose
@@ -204,19 +254,39 @@ For running in persistence mode, just mount volume to container by adding `-v ~/
 docker run --rm -d --name torrserver -v ~/ts:/opt/ts -p 8090:8090 ghcr.io/9000000/torrserver:latest
 ```
 
-#### Environments
+#### Environment Variables
 
-- `TS_HTTPAUTH` - 1, and place auth file into `~/ts/config` folder for enabling basic auth
-- `TS_RDB` - if 1, then the enabling `--rdb` flag
-- `TS_DONTKILL` - if 1, then the enabling `--dontkill` flag
-- `TS_PORT` - for changind default port to **5555** (example), also u need to change `-p 8090:8090` to `-p 5555:5555` (example)
-- `TS_CONF_PATH` - for overriding torrserver config path inside container. Example `/opt/tsss`
-- `TS_TORR_DIR` - for overriding torrents directory. Example `/opt/torr_files`
-- `TS_LOG_PATH` - for overriding log path. Example `/opt/torrserver.log`
-- `TS_PROXYURL` - set proxy URL for BitTorrent traffic (http, socks4, socks5, socks5h), example: socks5h://user:password@example.com:2080
-- `TS_PROXYMODE` - set proxy mode: "tracker" (only HTTP trackers, default), "peers" (only peer connections), or "full" (all traffic)
+- `TS_HTTPAUTH` – Set to `1` to enable basic authentication. The authentication file must be placed in the `~/ts/config` directory. This also protects the MCP endpoint at `/mcp`.
+- `TS_RDB` – If set to `1`, enables the `--rdb` command-line flag.
+- `TS_DONTKILL` – If set to `1`, enables the `--dontkill` command-line flag.
+- `TS_IP` – Specifies the bind address for the web server using the `--ip` flag.
+- `TS_PORT` – Overrides the default port (e.g., to `5555`). The corresponding port mapping must also be updated from `-p 8090:8090` to `-p 5555:5555` to reflect the change.
+- `TS_CONF_PATH` – Overrides the internal configuration path for TorrServer inside the container (e.g., `/opt/tsss`).
+- `TS_TORR_DIR` – Overrides the directory used for storing torrent files (e.g., `/opt/torr_files`).
+- `TS_TORR_ADDR` – Sets the torrent client address via the `--torrentaddr` flag.
+- `TS_LOG_PATH` – Overrides the log file path (e.g., `/opt/torrserver.log`).
+- `TS_PROXYURL` – Defines a proxy URL for BitTorrent traffic. Supports HTTP, SOCKS4, SOCKS5, and SOCKS5H protocols (e.g., `socks5h://user:password@example.com:2080`).
+- `TS_PROXYMODE` – Determines the proxy usage mode. Acceptable values are:
+  - `tracker` – Proxy only HTTP trackers (default).
+  - `peers` – Proxy only peer connections.
+  - `full` – Proxy all BitTorrent traffic.
+- `TS_SEARCH_WA_ENABLE` – If set to `1`, enables the `--searchwa` flag.
+- `TS_SSL_ENABLE` – If set to `1`, enables the `--ssl` flag.
+- `TS_SSL_PORT` – Specifies the HTTPS port via the `--sslport` flag.
+- `TS_SSL_CERT_PATH` – Specifies the path to the SSL certificate file via the `--sslcert` flag.
+- `TS_SSL_KEY_PATH` – Specifies the path to the SSL private key file via the `--sslkey` flag.
+- `TS_FORCE_HTTPS_ENABLE` – If set to `1`, enables the `--force-https` flag.
+- `TS_HTTP_MEDIA_ENABLE` – If set to `1`, enables the `--http-media` flag.
+- `TS_HTTPS_ONLY_ENABLE` – If set to `1`, enables the `--https-only` flag.
+- `TS_WEB_LOG_PATH` – Overrides the web server log path using the `--weblogpath` flag.
+- `TS_PUBLIC_IPV4_ADDR` – Sets the public IPv4 address using the `--pubipv4` flag.
+- `TS_PUBLIC_IPV6_ADDR` – Sets the public IPv6 address using the `--pubipv6` flag.
+- `TS_MAX_SIZE` – Defines the maximum allowed stream size (in bytes) via the `--maxsize` flag.
+- `TS_TELEGRAM_TOKEN` – Sets the Telegram bot token using the `--tg` flag.
+- `TS_FUSE_PATH` – Sets the FUSE mount point path using the `--fuse` flag.
+- `TS_WEBDAV_ENABLE` – If set to `1`, enables WebDAV support via the `--webdav` flag.
 
-Example with full overrided command (on default values):
+Example with full override command (on default values):
 
 ```bash
 docker run --rm -d -e TS_PORT=5665 -e TS_DONTKILL=1 -e TS_HTTPAUTH=1 -e TS_RDB=1 -e TS_CONF_PATH=/opt/ts/config -e TS_LOG_PATH=/opt/ts/log -e TS_TORR_DIR=/opt/ts/torrents -e TS_PROXYURL=socks5h://user:password@example.com:2080 -e TS_PROXYMODE=tracker --name torrserver -v ~/ts:/opt/ts -p 5665:5665 ghcr.io/9000000/torrserver:latest
@@ -276,7 +346,7 @@ To run the web server locally, just run
 yarn start
 ```
 
-More info at <https://github.com/9000000/TorrServer/tree/main/web#readme>
+More info at <https://github.com/9000000/TorrServer/tree/master/web#readme>
 
 ### Build
 
@@ -296,23 +366,246 @@ More info at <https://github.com/9000000/TorrServer/tree/main/web#readme>
 
 To build an Android server you will need the Android Toolchain.
 
+#### iOS
+
+iOS cannot run TorrServer as a subprocess. Releases include an in-process XCFramework built with `gomobile bind`:
+
+- Asset: `TorrServer-ios-TorrServerKit.xcframework.zip`
+- Minimum iOS: **18.0**
+- Slices: `ios-arm64` (device), `ios-arm64-simulator`, `ios-amd64-simulator`
+
+Build on macOS with Xcode:
+
+```bash
+./build-ios.sh
+```
+
+Link `TorrServerKit.xcframework` into the host app and call the gomobile API:
+
+```swift
+import TorrServerKit
+
+let err = TorrserverkitStartServer(8090, dataDir)
+if !err.isEmpty { /* handle error */ }
+// HTTP API: http://127.0.0.1:8090  (/echo, /stream, /torrents, …)
+TorrserverkitStopServer()
+```
+
+Host `Info.plist`:
+
+```xml
+<key>NSAppTransportSecurity</key>
+<dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <true/>
+    <key>NSAllowsLocalNetworking</key>
+    <true/>
+</dict>
+<key>NSLocalNetworkUsageDescription</key>
+<string>TorrServer discovers local peers and streams media over local HTTP.</string>
+```
+
+Limits: FUSE and GStreamer are not available on iOS. Background playback is the host app’s responsibility (`UIBackgroundModes`). The XCFramework is statically linked, so the combined iOS app is a GPL-3.0 derivative work. Public App Store submission of BitTorrent clients may be rejected under Guideline 5.2.3.
+
 #### Swagger
 
 `swag` must be installed on the system to [re]build Swagger documentation.
 
 ```bash
 go install github.com/swaggo/swag/cmd/swag@latest
-cd server; swag init -g web/server.go
+cd server
+swag init -g web/server.go --parseInternal --parseDepth 5
 
 # Documentation can be linted using
 swag fmt
 ```
+
+Standard binaries serve a filtered Swagger spec at runtime (only `/gst/settings`); `-gst` builds include all `/gst/*` endpoints.
 
 ## API
 
 ### API Docs
 
 API documentation is hosted as Swagger format available at path `/swagger/index.html`.
+
+### MCP (AI agents)
+
+TorrServer exposes a native [Model Context Protocol](https://modelcontextprotocol.io/) server at **`/mcp`** on the same HTTP(S) port as the web UI (default `8090`). OpenClaw, Hermes, and other MCP clients can list, add, and manage torrents, and get a play URL for the next unwatched TV episode. The REST API is unchanged.
+
+Endpoint: `http://<host>:8090/mcp` (or `https://` when `--ssl` is enabled).
+
+When HTTP auth is on (`-a` / `TS_HTTPAUTH=1`), MCP uses the same Basic credentials as the rest of the API (`accs.db`). Play links returned by tools are ordinary HTTP URLs for VLC, mpv, or a browser.
+
+**OpenClaw** (`openclaw.json`):
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "torrserver": {
+        "url": "http://127.0.0.1:8090/mcp",
+        "transport": "streamable-http"
+      }
+    }
+  }
+}
+```
+
+With auth, add `"headers": { "Authorization": "Basic <base64-user-pass>" }`.
+
+**Hermes** (`~/.hermes/config.yaml`):
+
+```yaml
+mcp_servers:
+  torrserver:
+    url: "http://127.0.0.1:8090/mcp"
+    headers:
+      Authorization: "Basic <base64-user-pass>"
+```
+
+See [server/mcp/README.md](server/mcp/README.md) for the tool list and next-unwatched behavior.
+
+## HTTPS
+
+Start with `--ssl` to serve the web UI and API over HTTPS on `--sslport` (default 8091) alongside plain HTTP on `--port`. Plain HTTP requests sent to the HTTPS port are redirected to `https://`. There are three ways to get a certificate:
+
+| Option | Trusted by browsers | Trusted by players/TVs | Needs |
+|---|---|---|---|
+| Self-signed (default) | after accepting a warning | no | nothing |
+| Let's Encrypt via DNS-01, LAN only | yes | yes (except Android ≤ 7.0) | a domain or free DuckDNS name |
+| Reverse proxy (Caddy, nginx) | yes | yes | a domain and a port open to the internet |
+
+### HTTP and HTTPS modes
+
+Four flags decide what the plain HTTP port (`--port`, default 8090) and the HTTPS port (`--sslport`, default 8091) serve:
+
+| Mode | Flags | HTTP port | HTTPS port | Use it when |
+|---|---|---|---|---|
+| HTTP only (default) | none | everything | not opened | a trusted home network, or behind a [reverse proxy](#reverse-proxy) |
+| HTTP and HTTPS | `--ssl` | everything | everything | browsers use HTTPS, players and TVs keep using HTTP |
+| HTTPS, media also on HTTP | `--ssl --force-https --http-media` | media only; everything else redirects to HTTPS | everything | the self-signed certificate, with players and TVs that can't use it |
+| HTTPS preferred | `--ssl --force-https` | redirects everything to HTTPS | everything | a trusted certificate; clients that type `http://` are sent to HTTPS |
+| HTTPS only | `--ssl --https-only` | not opened | everything | a trusted certificate, and nothing should ever travel unencrypted |
+
+- **Media** means `/stream`, `/play`, `/playlist`, `/playlistall` (also used by DLNA) and GStreamer HLS under `/gst/<hash>/`. The web UI, the API and GStreamer control endpoints (`/gst/settings`, `/gst/remove`, `/gst/echo`) are not media.
+- **Redirects** are `307 Temporary Redirect` to the same path and query on `https://<host>:<sslport>`. A request still reaches the HTTP port before it's redirected, so its URL and any Basic auth credentials have already been sent unencrypted. `--https-only` removes that path, because the HTTP port is never opened. The same applies to plain HTTP sent to the HTTPS port (below) in every mode, so always configure clients with the `https://` address.
+- **Plain HTTP sent to the HTTPS port** (for example `http://host:8091`) is redirected to `https://` in every mode, instead of failing with "Client sent an HTTP request to an HTTPS server".
+- **Links handed to players:** playlists and the web UI's external-player and copy-link buttons use the address the page was opened on. The exception is a page opened over the self-signed certificate while the HTTP port serves media: then they point at the HTTP port, because players reject that certificate. DLNA links point at the HTTP port when it serves media, and at the HTTPS port otherwise. With `--https-only`, Bonjour advertises `_torrserver` on the HTTPS port and doesn't advertise `_http`.
+- **TorrServer's own requests** (ffprobe, GStreamer) use an internal listener on a random `127.0.0.1` port that is never redirected, so they work in every mode, including when `--ip` excludes loopback.
+- **Self-signed certificate with `--force-https` or `--https-only`:** startup logs a warning, because most players and TVs won't play. Use a trusted certificate, or `--force-https --http-media` on a trusted network.
+- **Invalid combinations stop startup:** `--force-https` or `--https-only` without `--ssl`, `--http-media` without `--force-https`, and `--https-only` with `--http-media`. `--force-https` with `--https-only` is allowed and behaves like `--https-only`.
+- **Apps that use the API** (Lampa and other TorrServer clients that add torrents, list them or call `/gst/remove`) must be configured with the `https://` address when `--force-https` or `--https-only` is on: HTTP redirects are unreliable for browser API requests, particularly those requiring CORS preflight. `--http-media` only helps players that receive stream links.
+- **Docker:** `TS_SSL_ENABLE`, `TS_FORCE_HTTPS_ENABLE`, `TS_HTTP_MEDIA_ENABLE` and `TS_HTTPS_ONLY_ENABLE` set to `1` enable the matching flags.
+
+HTTPS is only on when TorrServer is started with `--ssl`; the choice isn't saved in the settings. The HTTPS port, certificate and key paths are saved, and reused on later starts with `--ssl`.
+
+Examples:
+
+```bash
+# HTTPS only, with a trusted certificate
+TorrServer --ssl --https-only --sslcert /opt/torrserver/tls/fullchain.pem --sslkey /opt/torrserver/tls/key.pem
+
+# self-signed certificate for browsers, players and TVs on HTTP
+TorrServer --ssl --force-https --http-media
+```
+
+### Certificate in the web UI
+
+With `--ssl`, **Settings → Additional → HTTPS** (turn on **PRO mode** to see the Additional tab) shows the HTTPS mode and ports, the certificate in use (names, issuer, expiry, whether a trusted CA issued it) and the certificate and key files it's served from. The certificate can be changed there without a restart. The mode and ports stay startup flags, and without `--ssl` the section isn't shown.
+
+- **Upload** a PEM certificate (full chain) and its unencrypted private key from the computer you're browsing on, e.g. `fullchain.pem` and `privkey.pem`. The pair must match and be currently valid. TorrServer copies them to `ssl/uploaded.crt` and `ssl/uploaded.key` in its config folder (the `--path` folder, e.g. `/opt/torrserver` with the Linux install script or `/opt/ts/config` in Docker; the HTTPS section shows the full path) and serves them within a few seconds. The upload sends the private key, so do it over HTTPS or on the TorrServer machine itself. The copy isn't renewed: upload again after renewing, or use the next option.
+- **Use these files** takes the full paths of a certificate and key that are already on the TorrServer machine, as TorrServer sees them (inside the container for Docker); nothing is uploaded. Use it for certificates renewed automatically by acme.sh, certbot or another ACME client: TorrServer notices when the files change and serves the renewed certificate without a restart.
+- **Use self-signed** switches back to TorrServer's self-signed certificate (the existing one is reused, so devices that trust it keep working) and deletes an uploaded copy.
+- **Regenerate** creates a new self-signed certificate and key.
+- **Download certificate** saves the certificate in use (never the key), e.g. to trust the self-signed one on your devices.
+
+The same actions are available in the API under `/ssl/` (see `/swagger`). They are not available with `--rdb`, and the certificate can't be changed here when `--sslcert`/`--sslkey` are given, because those flags are applied again on every start; start without them to manage the certificate from the web UI.
+
+### Self-signed certificate
+
+Without `--sslcert`/`--sslkey`, TorrServer generates a self-signed certificate for `localhost`, the hostname, `hostname.local` and the local IPs, and renews it before it expires or when the host moves to a new IP. Global IPv6 addresses are included but don't cause a renewal when they change, as IPv6 privacy extensions rotate them every few hours. Browsers show a warning you can accept once. Most media players, TVs and DLNA renderers reject it, so give them HTTP links: don't use `--force-https`, or add `--http-media` on a trusted network. When a playlist is requested over the self-signed HTTPS port and HTTP still serves media, its links point to the HTTP port. The self-signed certificate is only ever regenerated if it is one TorrServer created; your own certificate is never touched, even at the default location.
+
+### Trusted certificate on your LAN (Let's Encrypt DNS-01)
+
+Let's Encrypt can issue a certificate for a name that points to a **private** IP. It verifies you own the name through a DNS record, so nothing has to be reachable from the internet. Example with [DuckDNS](https://www.duckdns.org) (free) and [acme.sh](https://github.com/acmesh-official/acme.sh):
+
+1. Create a DuckDNS subdomain, e.g. `mytorr.duckdns.org`, and set its IP to TorrServer's LAN IP (e.g. `192.168.1.10`). Give the host a DHCP reservation so that IP doesn't change.
+2. Check it resolves on your LAN: `dig +short mytorr.duckdns.org`. If it returns nothing, your router's DNS rebinding protection blocks public names with private IPs; allow the domain there.
+3. Issue the certificate and install it where TorrServer reads it:
+
+   ```bash
+   DuckDNS_Token=YOUR_TOKEN acme.sh --issue --dns dns_duckdns -d mytorr.duckdns.org --server letsencrypt --dnssleep 180
+   acme.sh --install-cert -d mytorr.duckdns.org --key-file /opt/torrserver/tls/key.pem --fullchain-file /opt/torrserver/tls/fullchain.pem
+   ```
+
+4. Start TorrServer with the certificate. Use the **full chain** file: TVs and Android players reject a certificate without its intermediate.
+
+   ```bash
+   TorrServer --ssl --sslcert /opt/torrserver/tls/fullchain.pem --sslkey /opt/torrserver/tls/key.pem
+   ```
+
+   Or start with just `--ssl` and set the same two paths in the web UI under **Use these files** (see [Certificate in the web UI](#certificate-in-the-web-ui)).
+
+5. Open `https://mytorr.duckdns.org:8091` on any device on the LAN. Use the name, not the IP: the IP isn't in the certificate.
+6. Optional: add `--https-only` so TorrServer doesn't open the plain HTTP port at all, or `--force-https` to keep it open but redirect it to HTTPS.
+
+acme.sh renews the certificate automatically every ~60 days and rewrites the files; TorrServer picks up the new files within seconds, without a restart. Any ACME client with DNS-01 support (certbot, lego, Caddy with a DNS plugin) works the same way. Note that certificate names are published in public Certificate Transparency logs.
+
+### TorrServer on an Android TV box
+
+A certificate belongs to a name, not to a device or IP, so it doesn't have to be issued on the box. Two practical setups:
+
+**Issue on a computer, push to the box.** Run the DNS-01 steps above on a Mac, Linux or Windows (WSL) machine, point the DuckDNS name at the **box's** LAN IP, and let acme.sh copy each renewed certificate to the box over ADB (enable network debugging on the box):
+
+```bash
+acme.sh --install-cert -d mytorr.duckdns.org --key-file ~/tls/key.pem --fullchain-file ~/tls/fullchain.pem --reloadcmd "adb connect 192.168.1.50 && adb push ~/tls/fullchain.pem ~/tls/key.pem /sdcard/torrserver/tls/"
+```
+
+Start TorrServer on the box with `--ssl --sslcert /sdcard/torrserver/tls/fullchain.pem --sslkey /sdcard/torrserver/tls/key.pem`. TorrServer reloads the pushed files within seconds, without a restart. The computer has to be on around renewal time (every ~60 days).
+
+**Let another always-on device handle HTTPS.** If you have a NAS, Raspberry Pi or router that can run [Caddy](https://caddyserver.com) (built with the [DuckDNS plugin](https://github.com/caddy-dns/duckdns)), point the name at that device and forward to the box. Caddy obtains and renews the certificate by itself, and the box runs TorrServer without `--ssl`:
+
+```
+mytorr.duckdns.org {
+    tls {
+        dns duckdns YOUR_TOKEN
+    }
+    reverse_proxy 192.168.1.50:8090 {
+        flush_interval -1
+    }
+}
+```
+
+Running acme.sh on the box itself (e.g. in Termux) also works, but Android's storage restrictions and aggressive background-app killing make renewals unreliable. The box's own Android version doesn't matter, because TorrServer brings its own TLS stack; only the devices that *connect* to it must trust Let's Encrypt.
+
+### Reverse proxy
+
+If TorrServer is exposed to the internet under a domain, the simplest option is a reverse proxy that handles certificates itself. Never expose the plain HTTP port (`--port`) to the internet: Basic auth credentials and stream URLs would travel unencrypted. Run TorrServer without `--ssl`, enable `--httpauth`, and bind it to loopback with `--ip 127.0.0.1` when the proxy runs on the same host. TorrServer honours `X-Forwarded-Proto`/`X-Forwarded-Host`, so playlist links use the public `https://` name. Disable response buffering, or playback will stutter.
+
+Caddy (obtains and renews Let's Encrypt certificates automatically):
+
+```
+tv.example.com {
+    reverse_proxy 127.0.0.1:8090 {
+        flush_interval -1
+    }
+}
+```
+
+nginx (certificate from certbot or similar):
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:8090;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_buffering off;
+    proxy_request_buffering off;
+    proxy_read_timeout 24h;
+    client_max_body_size 50m;
+}
+```
 
 ## Authentication
 
@@ -329,24 +622,429 @@ The users data file should be located near to the settings. Basic auth, read mor
 
 Note: You should enable authentication with -a (--httpauth) TorrServer startup option.
 
-## Whitelist/Blacklist IP
+## Retrackers
 
-The lists file should be located in the same directory with config.db.
+When adding a torrent, TorrServer can modify announce trackers according to **Settings → Additional → Retrackers**:
 
-- Whitelist file name: `wip.txt`
-- Blacklist file name: `bip.txt`
+| Mode | Behavior |
+|------|----------|
+| Don't add | Leave magnet/file trackers unchanged |
+| Add (default) | Append the configured default/remote list |
+| Remove | Clear trackers from the torrent |
+| Replace | Replace with the configured default/remote list |
 
-Whitelist has priority over everything else.
+Related settings (same Web UI section, also via `POST /settings`):
 
-Example:
+- **`TrackersListURL`** — optional custom remote list URL. Leave **empty** to use the built-in ngosang `trackers_best_ip.txt` mirrors (tried in order):
+  1. `https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best_ip.txt`
+  2. `https://ngosang.github.io/trackerslist/trackers_best_ip.txt`
+  3. `https://cdn.jsdelivr.net/gh/ngosang/trackerslist@master/trackers_best_ip.txt`
+  4. `https://raw.githack.com/ngosang/trackerslist/master/trackers_best_ip.txt`
+  
+  If set, the custom URL is tried **first**, then the mirrors (duplicates are skipped). Failed/timed-out fetches fall back to the next URL, then to `DefaultTrackers` if all fail (5s timeout per URL).
+- **`DefaultTrackers`** — local announce URLs, one per line (`udp`/`http`/`https`/`wss`; `#` comments allowed). Used alone when all remote fetches fail, or merged after a successful remote fetch.
+
+Optional file overlay (always appended when present): put `trackers.txt` in the config directory (`--path` / `-d`), next to `config.db`. Only lines starting with `udp` or `http` are read from that file.
+
+## Web Application Firewall (WAF)
+
+TorrServer includes an HTTP access WAF that filters clients by IP address and by the `Referer` and `Origin` request headers. Configure it from **Settings → WAF** or through the authenticated `/waf` API.
+
+### Configuration
+
+WAF configuration is stored in the top-level **`waf`** object in **`settings.json`**. Each rule is a separate array entry:
+
+```json
+{
+  "waf": {
+    "version": 1,
+    "whitelist": [
+      "127.0.0.1",
+      "::1",
+      "10.0.0.0/8"
+    ],
+    "blacklist": [
+      "203.0.113.0/24"
+    ],
+    "referers": [
+      "example.com"
+    ]
+  }
+}
+```
+
+On first start, if `settings.json` has **no** `waf` key yet and legacy ACL files **`wip.txt`** (whitelist) / **`bip.txt`** (blacklist) exist in the config directory (same place as `config.db`), TorrServer imports them into `waf` arrays and renames the sources to **`wip.txt.bak`** / **`bip.txt.bak`**. Those backups are not read again. If a `waf` key already exists (even with empty lists), legacy files are left untouched.
+
+Changes saved through the web UI or API are applied immediately. After editing `settings.json` manually, restart TorrServer to load the changes.
+
+### IP rules
+
+Rules:
+
+- If the whitelist is **not empty**, the client IP must match it.
+- If the blacklist is **not empty**, a matching client IP is banned even when it is also on the whitelist.
+- An empty whitelist or blacklist disables that IP check.
+- Invalid entries are skipped and reported as warnings; valid entries remain active.
+- Banned responses use HTTP **403** with body `Banned`.
+- Client IP is taken from the TCP peer address (`RemoteAddr`). Reverse-proxy headers are not trusted by default.
+
+Supported array-entry formats include IPv4, IPv6, ranges, CIDR blocks, comments, and optional descriptions:
+
+```json
+[
+  "# comment",
+  "127.0.0.1",
+  "local:127.0.0.1",
+  "127.0.0.0-127.0.0.255",
+  "local:127.0.0.0-127.0.0.255",
+  "10.0.0.0/8",
+  "lan:10.0.0.0/8",
+  "2001:db8::1",
+  "local:2001:db8::1",
+  "2001:db8::/32"
+]
+```
+
+### Referer and Origin rules
+
+Block HTTP requests that come from unwanted sites (for example mirror pages that embed your TorrServer streams).
+
+- Each entry is a hostname. URLs with only an HTTP/HTTPS scheme and host are also accepted.
+- A rule blocks the hostname and all its subdomains.
+- Both `Referer` and `Origin` are checked before the IP allowlist, so an IP whitelist match cannot bypass a referer rule.
+- Requests without either header are allowed.
+- Protected internal rules remain active and are not displayed in the web UI.
+
+```json
+{
+  "referers": [
+    "example.com",
+    "evil.example.org",
+    "# comment"
+  ]
+}
+```
+
+### API
+
+`GET /waf` returns the active editable lists, status flags, and parse warnings. `POST /waf` atomically replaces all three editable lists and hot-reloads the WAF. The API uses newline-delimited strings for compatibility with the web text editors; all fields are required and an empty string clears a list.
+
+```shell
+curl -u USER:PASSWORD http://127.0.0.1:8090/waf
+
+curl -u USER:PASSWORD \
+  -H 'Content-Type: application/json' \
+  -d '{"whitelist":"127.0.0.1\n::1\n10.0.0.0/8","blacklist":"","referers":"example.com"}' \
+  http://127.0.0.1:8090/waf
+```
+
+In read-only mode, `GET /waf` remains available but `POST /waf` returns HTTP **403**.
+
+> **Note:** BitTorrent peer IP filtering uses a separate PeerGuardian-style file named `blocklist` in the config directory. That list is not managed by Settings → WAF / `/waf`.
+
+## Torznab
+
+TorrServer can talk to **Torznab** indexers so you can search for torrents from tools like **Jackett** and **Prowlarr**, including searching several configured indexers at once.
+
+Configure it in the web UI: **Settings → Torznab**.
+
+### Indexer parameters
+
+Each Torznab indexer needs:
+
+- **Host URL**: full URL to the Torznab API endpoint.
+  - Jackett example:
+
+  ```shell
+  http://192.168.1.10:9117/api/v2.0/indexers/all/results/torznab/
+  ```
+
+  - Prowlarr example:
+  
+  ```shell
+  http://localhost:9696/1
+  ```
+  
+  - Make sure to include the correct trailing slash (`/`) in your indexer's URL,
+  as required by your Torznab provider. TorrServer will try to properly format the path,
+  but matching your indexer's expected format is best to avoid connection issues.
+  
+- **API Key**: the key from your Torznab indexer manager.
+
+### Enabling Torznab search
+
+1. Open **Settings**.
+2. Open the **Torznab** tab.
+3. Turn on **Enable Torznab Search**.
+4. Enter **Host URL** and **API Key**, then **Add Server** for each indexer.
+5. **Save** settings.
+
+## GStreamer
+
+GStreamer adds HLS output for Matroska/WebM torrents and, when enabled, AVI files. Compatible video and AAC audio can be remuxed without quality loss; unsupported streams can be transcoded to H.264/AAC.
+
+### The `-gst` binary
+
+GStreamer support is available only in a binary compiled with the `gst` build tag. There is no runtime switch that can add `/gst/*` routes to a standard binary.
+
+| Binary | GStreamer |
+| --- | --- |
+| `TorrServer-gst-<os>-<arch>` | Yes - `/gst/*` routes, remuxing, and transcoding |
+| `TorrServer-<os>-<arch>` | No - `GET /gst/settings` reports `built_in: false` |
+
+Use the `--gst` option with the Linux/macOS install scripts, download a matching asset from [releases](https://github.com/YouROK/TorrServer/releases), or build from the repository root:
+
+```bash
+cd server
+CGO_ENABLED=0 go build -tags="nosqlite gst" -trimpath -o TorrServer-gst ./cmd
+```
+
+Supported gst targets are Windows amd64, Linux amd64/arm64, and macOS amd64/arm64. A Windows single-file build with an embedded runtime additionally uses the `embed_gstlib` tag and `server/gstreamer/gst-libs/win-x86_64`; see [BUILD_WINDOWS_GSTREAMER.md](BUILD_WINDOWS_GSTREAMER.md).
+
+### Runtime loading
+
+The gst build uses `purego` to load GStreamer at runtime. It is built with `CGO_ENABLED=0` and does not link GStreamer into the executable at build time.
+
+| Runtime mode | Platforms | How it works |
+| --- | --- | --- |
+| System or custom path | Windows, Linux, macOS | Loads libraries and plugins from `GSTPath` or a platform installation |
+| Portable `gst-lib/` beside the executable | Windows amd64 | Uses the normal GStreamer directory layout without embedding it |
+| Embedded `gst-lib` | Windows amd64 | Extracts the runtime from the executable into a versioned TorrServer cache directory on first use |
+
+Runtime roots are tried in this order:
+
+1. `GSTPath` from settings.
+2. Platform defaults such as `/usr`, `/usr/local`, the macOS framework/Homebrew prefixes, or the Windows MinGW install directory.
+3. Windows only: `gst-lib/` beside the executable.
+4. Windows only: the embedded runtime, when compiled with `embed_gstlib`.
+5. The operating-system loader search path (`PATH`, `LD_LIBRARY_PATH`, or `DYLD_LIBRARY_PATH`).
+
+Linux and macOS do not use a portable `gst-lib` directory. Install GStreamer system-wide or set `GSTPath`. When GStreamer loads successfully, its real version from `gst_version()` takes precedence over the configured fallback version.
+
+### Runtime requirements
+
+TorrServer requires **GStreamer 1.22 or newer** and `gst-discoverer-1.0`. The full package set is recommended because the pipeline may need HTTP/TLS support, container demuxers, codec parsers, audio decoders, `avenc_aac`, and `x264enc` depending on the source and configuration.
+
+`HDRToSDR` additionally requires the custom `hdrtonemap` GStreamer element. It is included in the embedded Windows runtime. A system/custom runtime must provide a compatible plugin through its normal plugin directory or `GST_PLUGIN_PATH`.
+
+### Installing GStreamer
+
+Installation is required for Linux/macOS gst builds and Windows gst builds that do not embed or ship `gst-lib`.
+
+**Debian / Ubuntu**
+
+```bash
+sudo apt-get update
+
+sudo apt-get install -y --no-install-recommends \
+  libgstreamer1.0-0 \
+  libgstreamer-plugins-base1.0-0 \
+  gstreamer1.0-plugins-base \
+  gstreamer1.0-plugins-good \
+  gstreamer1.0-plugins-bad \
+  gstreamer1.0-plugins-base-apps \
+  gstreamer1.0-plugins-ugly \
+  gstreamer1.0-libav \
+  gstreamer1.0-tools \
+  ocl-icd-libopencl1 \
+  ca-certificates
+```
+
+Package roles:
+
+| Package group | Purpose |
+| --- | --- |
+| `libgstreamer1.0-0`, `libgstreamer-plugins-base1.0-0` | Core and GstApp libraries loaded by TorrServer |
+| `gstreamer1.0-plugins-base`, `gstreamer1.0-plugins-base-apps` | Base elements and `gst-discoverer-1.0` |
+| `gstreamer1.0-plugins-good` | HTTP source, Matroska/WebM demuxing, and common media elements |
+| `gstreamer1.0-plugins-bad` | Modern codec parsers, timestamp helpers, and additional format support |
+| `gstreamer1.0-plugins-ugly` | `x264enc` CPU fallback for H.264 transcoding |
+| `gstreamer1.0-libav` | `avenc_aac` and FFmpeg-based codec support |
+| `gstreamer1.0-tools` | `gst-inspect-1.0` diagnostics |
+| `ocl-icd-libopencl1` | OpenCL loader for optional GPU HDR tone mapping; CPU fallback is used when unavailable |
+| `ca-certificates` | TLS certificate validation for HTTPS sources |
+
+The selected repository must provide GStreamer 1.22 or newer.
+
+Hardware encoders are optional. They also require a compatible vendor driver and GStreamer encoder plugin; TorrServer tests the available candidates and falls back to `x264enc` when none can start.
+
+**Fedora / RHEL / Rocky / AlmaLinux**
+
+```bash
+sudo dnf install -y \
+  gstreamer1 \
+
+  gstreamer1-plugins-base \
+  gstreamer1-plugins-base-tools \
+  gstreamer1-plugins-good \
+  gstreamer1-plugins-bad-free \
+  gstreamer1-plugins-ugly-free \
+  gstreamer1-plugin-libav \
+  ocl-icd \
+  ca-certificates
+```
+
+`gstreamer1` provides `gst-inspect-1.0` and related tools; `gstreamer1-plugins-base-tools` provides `gst-discoverer-1.0`. On RHEL and derivatives, `gstreamer1-plugin-libav` may require [EPEL](https://docs.fedoraproject.org/en-US/epel/). Full `x264enc` support may require [RPM Fusion](https://rpmfusion.org/) or the equivalent repository for the distribution.
+
+**Arch Linux**
+
+```bash
+sudo pacman -S --needed \
+  gstreamer \
+  gst-plugins-base \
+  gst-plugins-good \
+  gst-plugins-bad \
+  gst-plugins-ugly \
+  gst-libav \
+  ocl-icd \
+  ca-certificates
+```
+
+**macOS**
+
+Install the [official GStreamer Runtime](https://gstreamer.freedesktop.org/download/#macos), or use the current Homebrew formula, which includes the GStreamer plugin sets:
+
+```bash
+brew install gstreamer
+```
+
+Set `GSTPath` when auto-detection cannot find the installation. Common roots are `/Library/Frameworks/GStreamer.framework/Versions/1.0`, `/opt/homebrew`, and `/usr/local`.
+
+**Windows**
+
+The embedded `TorrServer-gst-windows-amd64.exe` needs no separate GStreamer installation. For a dynamic build, install the **MinGW x86_64 Runtime** from [gstreamer.freedesktop.org](https://gstreamer.freedesktop.org/download/#windows). The runtime installer is sufficient; development files are not required to run TorrServer.
+
+The default root is:
 
 ```text
-local:127.0.0.0-127.0.0.255
-127.0.0.0-127.0.0.255
-local:127.0.0.1
-127.0.0.1
-# at the beginning of the line, comment
+C:\Program Files\gstreamer\1.0\mingw_x86_64
 ```
+
+Alternatively, place the same runtime layout in `gst-lib/` beside the executable. Do not mix an MSVC installation path with the MinGW libraries or the bundled MinGW `hdrtonemap` plugin.
+
+### Verifying the installation
+
+Check the runtime and discoverer first:
+
+```bash
+gst-inspect-1.0 --version
+gst-discoverer-1.0 --version
+gst-inspect-1.0 souphttpsrc
+gst-inspect-1.0 matroskademux
+gst-inspect-1.0 mp4mux
+gst-inspect-1.0 appsink
+gst-inspect-1.0 avenc_aac
+gst-inspect-1.0 x264enc
+```
+
+`avenc_aac` is needed when the selected audio is not already AAC. `x264enc` is the CPU fallback when video transcoding is enabled. Check `gst-inspect-1.0 hdrtonemap` only when `HDRToSDR` is required.
+
+The shell commands require the GStreamer `bin` directory on `PATH`. For an embedded Windows build, use `GET /gst/echo` or the **GStreamer** settings tab instead. The health response reports `found`, `available`, and `works` for the native runtime, `gst-discoverer`, HDR tone mapping, and the embedded runtime where applicable.
+
+### Web UI configuration
+
+1. Open **Settings**.
+2. Enable **PRO mode**.
+3. Open the **GStreamer** tab.
+4. Adjust options and click **Save GStreamer Settings**.
+
+Settings are stored separately from the main BitTorrent settings and take effect for new tasks. Existing tasks keep the configuration with which they were created.
+
+### `settings.json` block
+
+GStreamer options are stored under the top-level `gstreamer` key in `settings.json`. Legacy keys `gst` and `GStreamer` are still read on load; saving from the web UI or API writes the `gstreamer` key.
+
+Example (`settings.json`):
+
+```json
+{
+  "gstreamer": {
+    "GSTVersion": 1.22,
+    "GSTPath": "",
+    "Source": "stream",
+    "MaxTasks": 0,
+    "InactiveMinutes": 5,
+    "AACBitrateKbps": 256,
+    "AACChannels": 0,
+    "AACSamplerate": 0,
+    "SegmentSeconds": 6,
+    "SegmentDiff": 20,
+    "Subtitles": true,
+    "TranscodeH264": false,
+    "TranscodeH265": false,
+    "TranscodeAV1": false,
+    "TranscodeVP9": false,
+    "TranscodeVP8": false,
+    "TranscodeAVI": false,
+    "HDRToSDR": false,
+    "HardwareAcceleration": true,
+    "UseGPU": true,
+    "X264Ultrafast": false,
+    "VideoBitrate": 10000
+  }
+}
+```
+
+On Windows, platform defaults use `GSTVersion: 1.28` and `GSTPath: "C:\\Program Files\\gstreamer\\1.0\\mingw_x86_64"`. Other platforms default to version `1.22` and an empty path.
+
+| Field | Description |
+| --- | --- |
+| `GSTVersion` | Pipeline compatibility fallback, minimum `1.22`. A successfully detected runtime version takes precedence. |
+| `GSTPath` | GStreamer installation root. Empty uses platform auto-detection. |
+| `Source` | `stream` accepts any info hash; `play` requires a torrent already listed in TorrServer. |
+| `MaxTasks` | Maximum concurrent GStreamer tasks. `0` is unlimited; the least recently active task is removed when the limit is exceeded. |
+| `InactiveMinutes` | Freeze and release an idle pipeline after this timeout. The task is removed 20 minutes later if it stays inactive. |
+| `AACBitrateKbps` | Bitrate for non-AAC audio transcoding. It is doubled for more than two channels. |
+| `AACChannels` | Output channels for non-AAC audio. `0` uses the source value, clamped to 1-8; fallback is 2. |
+| `AACSamplerate` | Output sample rate for non-AAC audio. `0` selects the nearest supported source rate; fallback is 48000 Hz. |
+| `SegmentSeconds` | Target HLS duration. Copy mode uses Matroska Cue boundaries when available. |
+| `SegmentDiff` | Keyframe alignment tolerance in copy mode. `0` disables the limit. |
+| `Subtitles` | Expose supported embedded text subtitles as segmented WebVTT. Bitmap subtitles are not converted. |
+| `TranscodeH264` | Convert H.264 video to H.264 instead of copying it. |
+| `TranscodeH265` | Convert H.265/HEVC video to H.264 instead of copying it. |
+| `TranscodeAV1` | Convert AV1 video to H.264 instead of copying it. |
+| `TranscodeVP9` | Convert VP9 video to H.264 instead of copying it. |
+| `TranscodeVP8` | Allow VP8 input and convert it to H.264. VP8 is rejected when disabled. |
+| `TranscodeAVI` | Allow AVI input and convert its video to H.264. AVI is rejected when disabled. |
+| `HDRToSDR` | Tone-map detected PQ/HLG HDR to SDR and convert the video to H.264. Requires `hdrtonemap`. |
+| `HardwareAcceleration` | Use a tested hardware H.264 encoder when available; otherwise use `x264enc`. |
+| `UseGPU` | Allow GPU video encoding and HDR processing. CPU fallbacks are used when unavailable. |
+| `X264Ultrafast` | Use the x264 `ultrafast` preset instead of `veryfast`, reducing CPU load at the cost of compression efficiency. |
+| `VideoBitrate` | Target H.264 video bitrate in kbps when video transcoding is active. |
+
+With all `Transcode*` options disabled, H.264, H.265/HEVC, AV1, and VP9 video is copied. AAC audio is also copied; other audio codecs are decoded and encoded to AAC.
+
+### API
+
+**Settings** (requires authentication when `--httpauth` is enabled; read/write only in `-gst` builds):
+
+- `GET /gst/settings` — on `-gst` builds: `built_in`, current config, and platform defaults; on standard builds: `{ "built_in": false }` only
+- `POST /gst/settings` — update or reset config (`404` on standard builds)
+
+  ```json
+  { "action": "set", "config": { "GSTVersion": 1.22, "Source": "stream" } }
+  ```
+
+  Reset to defaults:
+
+  ```json
+  { "action": "def" }
+  ```
+
+**Streaming** (available in `-gst` builds):
+
+| Endpoint | Description |
+| --- | --- |
+| `GET /gst/echo` | GStreamer / gst-discoverer health check |
+| `GET /gst/:hash/probe` | Probe torrent file metadata (`index`, `id`, or `fileID` query); successful probes are cached for one hour |
+| `GET /gst/:hash/master.m3u8` | Create/reuse a task and return the HLS master playlist (`index`, `audio`, and optional `seconds` query) |
+| `GET /gst/:hash/video.m3u8` | HLS media playlist referenced by the master playlist |
+| `GET /gst/:hash/init.mp4` | Initialization segment |
+| `GET /gst/:hash/seg/*segment` | Media segment |
+| `GET /gst/:hash/subs/:track.m3u8` | Segmented WebVTT subtitle playlist |
+| `GET /gst/:hash/subs/:track/:segment.vtt` | WebVTT subtitle segment |
+| `GET /gst/:hash/heartbeat` | Keep the task and its torrent active; returns torrent state details |
+| `GET /gst/remove` | Dispose the task and drop the torrent cache (`hash` or `id` query) |
 
 ## Donate
 

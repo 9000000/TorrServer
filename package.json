@@ -1,6 +1,6 @@
 {
   "name": "TorrServer",
-  "version": "1.0.0",
+  "version": "5.0.0",
   "description": "AI Agent project powered by Google Antigravity",
   "private": true,
   "scripts": {

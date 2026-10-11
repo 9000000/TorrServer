@@ -13,6 +13,11 @@
     "paths": {
         "/cache": {
             "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
                 "description": "Return cache stats.",
                 "produces": [
                     "application/json"
@@ -44,6 +49,11 @@
         },
         "/download/{size}": {
             "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
                 "description": "Download the test file of given size (for speed testing purpose).",
                 "produces": [
                     "application/octet-stream"
@@ -91,8 +101,38 @@
                 }
             }
         },
+        "/ffp/status": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "Reports whether the ffprobe binary is available. Features that need real\nmedia duration (e.g. saving playback position) are only usable when true.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "API"
+                ],
+                "summary": "ffprobe availability",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.ffprobeStatusResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/ffp/{hash}/{id}": {
             "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
                 "description": "Gather informations using ffprobe.",
                 "produces": [
                     "application/json"
@@ -124,6 +164,479 @@
                 }
             }
         },
+        "/gst/echo": {
+            "get": {
+                "description": "Requires a `-gst` build. Not available in standard binaries.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GStreamer"
+                ],
+                "summary": "GStreamer health check",
+                "responses": {
+                    "200": {
+                        "description": "GStreamer runtime status",
+                        "schema": {
+                            "$ref": "#/definitions/api.gstreamerEchoDocResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/gst/remove": {
+            "get": {
+                "description": "Requires a `-gst` build. Not available in standard binaries.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GStreamer"
+                ],
+                "summary": "Stop GStreamer transcode task",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Torrent infohash",
+                        "name": "hash",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Torrent infohash (alias)",
+                        "name": "id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Task removed",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "boolean"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid identifier",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found"
+                    }
+                }
+            }
+        },
+        "/gst/settings": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "On `-gst` builds returns built_in, config and defaults. On standard builds returns built_in: false only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GStreamer"
+                ],
+                "summary": "Get GStreamer configuration",
+                "responses": {
+                    "200": {
+                        "description": "GStreamer settings",
+                        "schema": {
+                            "$ref": "#/definitions/api.gstreamerSettingsDocResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "Available on `-gst` builds only; standard builds return 404.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GStreamer"
+                ],
+                "summary": "Update GStreamer configuration",
+                "parameters": [
+                    {
+                        "description": "GStreamer settings request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.gstreamerSettingsDocRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Update successful",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input data",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Read-only mode",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "GStreamer is not built in",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/gst/{hash}/heartbeat": {
+            "get": {
+                "description": "Requires a `-gst` build. Not available in standard binaries.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GStreamer"
+                ],
+                "summary": "GStreamer task heartbeat",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Torrent infohash",
+                        "name": "hash",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Torrent heartbeat state",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found"
+                    }
+                }
+            }
+        },
+        "/gst/{hash}/init.mp4": {
+            "get": {
+                "description": "Requires a `-gst` build. Returns the fMP4 init segment for the transcode session.",
+                "produces": [
+                    "video/mp4"
+                ],
+                "tags": [
+                    "GStreamer"
+                ],
+                "summary": "HLS initialization segment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Torrent infohash",
+                        "name": "hash",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Audio track index",
+                        "name": "audio",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Start offset in seconds",
+                        "name": "seconds",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "video/mp4 init segment",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found"
+                    },
+                    "502": {
+                        "description": "Pipeline error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/gst/{hash}/master.m3u8": {
+            "get": {
+                "description": "Requires a `-gst` build. Returns an HLS VOD master playlist for transcoded playback.",
+                "produces": [
+                    "application/vnd.apple.mpegurl"
+                ],
+                "tags": [
+                    "GStreamer"
+                ],
+                "summary": "HLS master playlist",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Torrent infohash",
+                        "name": "hash",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "File index in torrent",
+                        "name": "index",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "File index (alias)",
+                        "name": "id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "File index (alias)",
+                        "name": "fileID",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Audio track index",
+                        "name": "audio",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Start offset in seconds",
+                        "name": "seconds",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "application/vnd.apple.mpegurl playlist",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "502": {
+                        "description": "Pipeline error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/gst/{hash}/probe": {
+            "get": {
+                "description": "Requires a `-gst` build. Uses gst-discoverer to inspect container and codec information.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GStreamer"
+                ],
+                "summary": "Probe torrent media tracks",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Torrent infohash",
+                        "name": "hash",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "File index in torrent",
+                        "name": "index",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "File index (alias)",
+                        "name": "id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "File index (alias)",
+                        "name": "fileID",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Media probe result",
+                        "schema": {
+                            "$ref": "#/definitions/api.gstreamerProbeInfoDoc"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid source",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Probe failed",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "504": {
+                        "description": "Probe timed out",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/gst/{hash}/seg/{segment}": {
+            "get": {
+                "description": "Requires a `-gst` build. Returns an fMP4 media segment for HLS playback.",
+                "produces": [
+                    "video/mp4"
+                ],
+                "tags": [
+                    "GStreamer"
+                ],
+                "summary": "HLS media segment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Torrent infohash",
+                        "name": "hash",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Segment index (e.g. 0.m4s)",
+                        "name": "segment",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Audio track index",
+                        "name": "audio",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "video/mp4 media segment",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "206": {
+                        "description": "Partial content",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid segment",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found"
+                    },
+                    "502": {
+                        "description": "Pipeline error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/magnets": {
             "get": {
                 "description": "Get HTML of magnet links.",
@@ -137,6 +650,31 @@
                 "responses": {
                     "200": {
                         "description": "HTML with Magnet links"
+                    }
+                }
+            }
+        },
+        "/mediabase": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "Scheme and host that links handed to external players (VLC, copied links)\nshould use. It differs from the web UI origin when the UI is served over\nTorrServer's self-signed HTTPS certificate, which players reject, and the\nplain HTTP port serves media. In-page playback should keep using the UI origin.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "API"
+                ],
+                "summary": "Base URL for external players",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.mediaBaseResponse"
+                        }
                     }
                 }
             }
@@ -211,6 +749,11 @@
         },
         "/playlistall/all.m3u": {
             "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
                 "description": "Retrieve all torrents and generates a bundled M3U playlist.",
                 "produces": [
                     "audio/x-mpegurl"
@@ -231,6 +774,11 @@
         },
         "/search": {
             "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
                 "description": "Makes a rutor search.",
                 "produces": [
                     "application/json"
@@ -263,6 +811,11 @@
         },
         "/settings": {
             "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
                 "description": "Allow to get or set server settings.",
                 "consumes": [
                     "application/json"
@@ -297,6 +850,11 @@
         },
         "/shutdown": {
             "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
                 "description": "Gracefully shuts down server after 1 second.",
                 "tags": [
                     "API"
@@ -305,6 +863,306 @@
                 "responses": {
                     "200": {
                         "description": "OK"
+                    }
+                }
+            }
+        },
+        "/ssl/cert": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "The configured certificate (chain) in PEM, e.g. to trust the self-signed one on a device. The private key is never served.",
+                "produces": [
+                    "application/x-x509-ca-cert"
+                ],
+                "tags": [
+                    "API"
+                ],
+                "summary": "Download the HTTPS certificate",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ssl/paths": {
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "Uses a certificate (chain) and key already on the server, e.g. kept up to date by acme.sh or certbot. The pair must load, match and be currently valid. Renewals of these files are picked up without a restart.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "API"
+                ],
+                "summary": "Use HTTPS certificate files by path",
+                "parameters": [
+                    {
+                        "description": "Absolute paths of the certificate and key files",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/web.sslPathsReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/web.sslStatus"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ssl/regenerate": {
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "Creates a new self-signed certificate and key for the current local IPs and hostname. Only when the self-signed certificate is in use.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "API"
+                ],
+                "summary": "Regenerate the self-signed HTTPS certificate",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/web.sslStatus"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ssl/selfsigned": {
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "Switches to TorrServer's self-signed certificate (reused, or generated if missing) and deletes an uploaded one. Certificate files given by path are left on disk.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "API"
+                ],
+                "summary": "Use the self-signed HTTPS certificate",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/web.sslStatus"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ssl/status": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "HTTPS mode, ports and the configured certificate (subject, SANs, issuer, validity, source). Never returns key material.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "API"
+                ],
+                "summary": "HTTPS status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/web.sslStatus"
+                        }
+                    }
+                }
+            }
+        },
+        "/ssl/upload": {
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "Stores a PEM certificate (chain) and its unencrypted private key in \u003cconfig\u003e/ssl/ and uses them. The pair must match and be currently valid. Served without a restart when HTTPS is running.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "API"
+                ],
+                "summary": "Upload an HTTPS certificate",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Certificate (chain), PEM",
+                        "name": "cert",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Private key, PEM",
+                        "name": "key",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/web.sslStatus"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
                     }
                 }
             }
@@ -330,7 +1188,7 @@
             "get": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "Retrieves the current storage preferences for settings and viewed history",
@@ -375,7 +1233,7 @@
             "post": {
                 "security": [
                     {
-                        "ApiKeyAuth": []
+                        "BasicAuth": []
                     }
                 ],
                 "description": "Updates the storage preferences for settings and viewed history. Requires application restart for changes to take effect.",
@@ -559,6 +1417,11 @@
         },
         "/tmdb/settings": {
             "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
                 "description": "Get TMDB API configuration",
                 "produces": [
                     "application/json"
@@ -579,7 +1442,12 @@
         },
         "/torrent/upload": {
             "post": {
-                "description": "Only one file support.",
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "Supports multiple files. Returns array of statuses.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -589,11 +1457,11 @@
                 "tags": [
                     "API"
                 ],
-                "summary": "Add .torrent file",
+                "summary": "Add .torrent files",
                 "parameters": [
                     {
                         "type": "file",
-                        "description": "Torrent file to insert",
+                        "description": "Torrent file(s) to insert",
                         "name": "file",
                         "in": "formData",
                         "required": true
@@ -606,7 +1474,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "Torrent title",
+                        "description": "Torrent title (single file only)",
                         "name": "title",
                         "in": "formData"
                     },
@@ -618,7 +1486,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "Torrent poster",
+                        "description": "Torrent poster (single file only)",
                         "name": "poster",
                         "in": "formData"
                     },
@@ -631,9 +1499,9 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Torrent status",
+                        "description": "Torrent statuses",
                         "schema": {
-                            "$ref": "#/definitions/state.TorrentStatus"
+                            "type": "if"
                         }
                     }
                 }
@@ -641,6 +1509,11 @@
         },
         "/torrents": {
             "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
                 "description": "Allow to list, add, remove, get, set, drop, wipe torrents on server. The action depends of what has been asked.",
                 "consumes": [
                     "application/json"
@@ -672,6 +1545,11 @@
         },
         "/torznab/search": {
             "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
                 "description": "Makes a torznab search.",
                 "produces": [
                     "application/json"
@@ -704,6 +1582,11 @@
         },
         "/viewed": {
             "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
                 "description": "Allow to set, list or remove viewed torrents from server.",
                 "consumes": [
                     "application/json"
@@ -738,6 +1621,113 @@
                     }
                 }
             }
+        },
+        "/waf": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "Returns whitelist/blacklist IP and blocked referer lists stored in settings.json.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "API"
+                ],
+                "summary": "Get HTTP WAF lists",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.wafResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "Fully replaces whitelist/blacklist IP and blocked referer lists in settings.json and hot-reloads the WAF. All three fields are required; explicit empty strings clear a list.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "API"
+                ],
+                "summary": "Update HTTP WAF lists",
+                "parameters": [
+                    {
+                        "description": "Complete WAF configuration",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.wafUpdateReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.wafResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -748,6 +1738,136 @@
                     "type": "string"
                 },
                 "hash": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ffprobeStatusResponse": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "api.gstreamerComponentDocStatus": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "type": "boolean"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "found": {
+                    "type": "boolean"
+                },
+                "works": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "api.gstreamerEchoDocResponse": {
+            "type": "object",
+            "properties": {
+                "gst_discoverer": {
+                    "$ref": "#/definitions/api.gstreamerComponentDocStatus"
+                },
+                "gstreamer": {
+                    "$ref": "#/definitions/api.gstreamerComponentDocStatus"
+                }
+            }
+        },
+        "api.gstreamerProbeInfoDoc": {
+            "type": "object",
+            "properties": {
+                "Container": {
+                    "type": "string"
+                },
+                "DurationNS": {
+                    "type": "integer"
+                },
+                "FileSize": {
+                    "type": "integer"
+                },
+                "Tracks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.gstreamerTrackDoc"
+                    }
+                }
+            }
+        },
+        "api.gstreamerSettingsDocRequest": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "config": {
+                    "type": "object",
+                    "additionalProperties": {}
+                }
+            }
+        },
+        "api.gstreamerSettingsDocResponse": {
+            "type": "object",
+            "properties": {
+                "built_in": {
+                    "type": "boolean"
+                },
+                "config": {},
+                "defaults": {}
+            }
+        },
+        "api.gstreamerTrackDoc": {
+            "type": "object",
+            "properties": {
+                "CapsName": {
+                    "type": "string"
+                },
+                "Channels": {
+                    "type": "integer"
+                },
+                "Codec": {
+                    "type": "string"
+                },
+                "FrameRateDen": {
+                    "type": "integer"
+                },
+                "FrameRateNum": {
+                    "type": "integer"
+                },
+                "Height": {
+                    "type": "integer"
+                },
+                "Index": {
+                    "type": "integer"
+                },
+                "Language": {
+                    "type": "string"
+                },
+                "PadName": {
+                    "type": "string"
+                },
+                "Rate": {
+                    "type": "integer"
+                },
+                "Title": {
+                    "type": "string"
+                },
+                "Type": {
+                    "type": "string"
+                },
+                "Width": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.mediaBaseResponse": {
+            "type": "object",
+            "properties": {
+                "base": {
                     "type": "string"
                 }
             }
@@ -802,6 +1922,57 @@
                     "type": "integer"
                 },
                 "hash": {
+                    "type": "string"
+                },
+                "timecode": {
+                    "type": "number"
+                }
+            }
+        },
+        "api.wafResponse": {
+            "type": "object",
+            "properties": {
+                "blacklist": {
+                    "type": "string"
+                },
+                "ip_enabled": {
+                    "type": "boolean"
+                },
+                "read_only": {
+                    "type": "boolean"
+                },
+                "referer_enabled": {
+                    "type": "boolean"
+                },
+                "referers": {
+                    "type": "string"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/waf.Warning"
+                    }
+                },
+                "whitelist": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.wafUpdateReq": {
+            "type": "object",
+            "required": [
+                "blacklist",
+                "referers",
+                "whitelist"
+            ],
+            "properties": {
+                "blacklist": {
+                    "type": "string"
+                },
+                "referers": {
+                    "type": "string"
+                },
+                "whitelist": {
                     "type": "string"
                 }
             }
@@ -873,6 +2044,10 @@
                 "connectionsLimit": {
                     "type": "integer"
                 },
+                "defaultTrackers": {
+                    "description": "newline-separated announce URLs used as local/fallback list",
+                    "type": "string"
+                },
                 "disableDHT": {
                     "type": "boolean"
                 },
@@ -895,6 +2070,10 @@
                     "description": "in kb, 0 - inf",
                     "type": "integer"
                 },
+                "enableBonjour": {
+                    "description": "Bonjour/mDNS LAN discovery (_torrserver, _http, _https)",
+                    "type": "boolean"
+                },
                 "enableDLNA": {
                     "description": "DLNA",
                     "type": "boolean"
@@ -907,8 +2086,8 @@
                     "description": "BT Config",
                     "type": "boolean"
                 },
-                "enableProxy": {
-                    "description": "P2P Proxy",
+                "enableLPD": {
+                    "description": "LPD",
                     "type": "boolean"
                 },
                 "enableRutorSearch": {
@@ -924,7 +2103,15 @@
                     "type": "boolean"
                 },
                 "friendlyName": {
+                    "description": "Shared name for DLNA and Bonjour",
                     "type": "string"
+                },
+                "lpdipv6": {
+                    "type": "boolean"
+                },
+                "mergeAllM3U": {
+                    "description": "M3U",
+                    "type": "boolean"
                 },
                 "peersListenPort": {
                     "type": "integer"
@@ -932,12 +2119,6 @@
                 "preloadCache": {
                     "description": "in percent",
                     "type": "integer"
-                },
-                "proxyHosts": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 },
                 "readerReadAHead": {
                     "description": "in percent, 5%-100%, [...S__X__E...] [S-E] not clean",
@@ -996,6 +2177,14 @@
                         "$ref": "#/definitions/settings.TorznabConfig"
                     }
                 },
+                "trackTimecode": {
+                    "description": "Viewed timecodes",
+                    "type": "boolean"
+                },
+                "trackersListURL": {
+                    "description": "optional custom remote trackers list URL; empty = use built-in mirrors; tried first, then mirrors",
+                    "type": "string"
+                },
                 "uploadRateLimit": {
                     "description": "in kb, 0 - inf",
                     "type": "integer"
@@ -1005,6 +2194,19 @@
                     "type": "boolean"
                 }
             }
+        },
+        "settings.CategoryType": {
+            "type": "string",
+            "enum": [
+                "default",
+                "manual",
+                "all"
+            ],
+            "x-enum-varnames": [
+                "CategoryDefault",
+                "CategoryManual",
+                "CategoryAll"
+            ]
         },
         "settings.TMDBConfig": {
             "type": "object",
@@ -1030,6 +2232,12 @@
         "settings.TorznabConfig": {
             "type": "object",
             "properties": {
+                "catType": {
+                    "$ref": "#/definitions/settings.CategoryType"
+                },
+                "categories": {
+                    "type": "string"
+                },
                 "host": {
                     "type": "string"
                 },
@@ -1049,6 +2257,54 @@
                 },
                 "hash": {
                     "type": "string"
+                },
+                "timecode": {
+                    "type": "number"
+                }
+            }
+        },
+        "sslcerts.Info": {
+            "type": "object",
+            "properties": {
+                "cert_file": {
+                    "type": "string"
+                },
+                "dns_names": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "error": {
+                    "type": "string"
+                },
+                "ips": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "issuer": {
+                    "type": "string"
+                },
+                "key_file": {
+                    "type": "string"
+                },
+                "not_after": {
+                    "type": "string"
+                },
+                "not_before": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "trusted": {
+                    "description": "Trusted reports whether the chain verifies against this system's root CAs.",
+                    "type": "boolean"
                 }
             }
         },
@@ -1269,6 +2525,69 @@
                 },
                 "upload_speed": {
                     "type": "number"
+                }
+            }
+        },
+        "waf.Warning": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "line": {
+                    "type": "integer"
+                },
+                "list": {
+                    "type": "string"
+                }
+            }
+        },
+        "web.sslPathsReq": {
+            "type": "object",
+            "required": [
+                "cert",
+                "key"
+            ],
+            "properties": {
+                "cert": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                }
+            }
+        },
+        "web.sslStatus": {
+            "type": "object",
+            "properties": {
+                "cert": {
+                    "$ref": "#/definitions/sslcerts.Info"
+                },
+                "cert_from_flags": {
+                    "description": "CertFromFlags is true when --sslcert/--sslkey set the paths: they are applied again\non every start, so the certificate can't be changed here.",
+                    "type": "boolean"
+                },
+                "enabled": {
+                    "description": "Enabled is true when TorrServer was started with --ssl. HTTP/HTTPS modes and ports\nare startup flags; the certificate can only be managed here while HTTPS runs.",
+                    "type": "boolean"
+                },
+                "force_https": {
+                    "type": "boolean"
+                },
+                "http_enabled": {
+                    "type": "boolean"
+                },
+                "http_media": {
+                    "type": "boolean"
+                },
+                "http_port": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "string"
+                },
+                "read_only": {
+                    "type": "boolean"
                 }
             }
         }

@@ -8,8 +8,8 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"server/proxy"
 	"sync"
+	"time"
 
 	"github.com/anacrolix/publicip"
 	"github.com/anacrolix/torrent"
@@ -30,7 +30,7 @@ type BTServer struct {
 
 	torrents map[metainfo.Hash]*Torrent
 
-	mu sync.Mutex
+	mu sync.RWMutex
 }
 
 var privateIPBlocks []*net.IPNet
@@ -61,15 +61,16 @@ func NewBTS() *BTServer {
 }
 
 func (bt *BTServer) Connect() error {
+	utils.PrefetchTrackers()
+
 	bt.mu.Lock()
 	defer bt.mu.Unlock()
 	var err error
-	bt.configure(context.TODO())
+	bt.configure()
 	bt.client, err = torrent.NewClient(bt.config)
 	bt.torrents = make(map[metainfo.Hash]*Torrent)
 	InitApiHelper(bt)
 
-	proxy.Start()
 	return err
 }
 
@@ -81,12 +82,19 @@ func (bt *BTServer) Disconnect() {
 		bt.client = nil
 		utils.FreeOSMemGC()
 	}
-	proxy.Stop()
 }
 
-func (bt *BTServer) configure(ctx context.Context) {
+func (bt *BTServer) configure() {
 	blocklist, _ := utils.ReadBlockedIP()
 	bt.config = torrent.NewDefaultClientConfig()
+
+	if settings.BTsets.EnableLPD {
+		bt.config.LocalServiceDiscovery = &torrent.LocalServiceDiscoveryConfig{
+			Ip6: settings.BTsets.LPDIPv6 && settings.BTsets.EnableIPv6,
+		}
+	} else {
+		bt.config.LocalServiceDiscovery = nil
+	}
 
 	bt.storage = torrstor.NewStorage(settings.BTsets.CacheSize)
 	bt.config.DefaultStorage = bt.storage
@@ -159,6 +167,9 @@ func (bt *BTServer) configure(ctx context.Context) {
 		}
 	}
 	if bt.config.PublicIp4 == nil {
+		// Create a context with a 3-second timeout for the IP lookup
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
 		bt.config.PublicIp4, err = publicip.Get4(ctx)
 		if err != nil {
 			log.Printf("error getting public ipv4 address: %v", err)
@@ -178,6 +189,9 @@ func (bt *BTServer) configure(ctx context.Context) {
 		}
 	}
 	if bt.config.PublicIp6 == nil && settings.BTsets.EnableIPv6 {
+		// Create a context with a 3-second timeout for the IP lookup
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
 		bt.config.PublicIp6, err = publicip.Get6(ctx)
 		if err != nil {
 			log.Printf("error getting public ipv6 address: %v", err)
@@ -253,20 +267,23 @@ func (bt *BTServer) configureProxy() error {
 }
 
 func (bt *BTServer) GetTorrent(hash torrent.InfoHash) *Torrent {
-	if torr, ok := bt.torrents[hash]; ok {
-		return torr
-	}
-	return nil
+	bt.mu.RLock()
+	torr := bt.torrents[hash]
+	bt.mu.RUnlock()
+	return torr
 }
 
 func (bt *BTServer) ListTorrents() map[metainfo.Hash]*Torrent {
 	list := make(map[metainfo.Hash]*Torrent)
+	bt.mu.RLock()
 	maps.Copy(list, bt.torrents)
+	bt.mu.RUnlock()
 	return list
 }
 
 func (bt *BTServer) RemoveTorrent(hash torrent.InfoHash) bool {
-	if torr, ok := bt.torrents[hash]; ok {
+	// Torrent.Close takes bt.mu, so the lock must be released before calling it
+	if torr := bt.GetTorrent(hash); torr != nil {
 		return torr.Close()
 	}
 	return false

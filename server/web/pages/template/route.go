@@ -266,6 +266,13 @@ func RouteWebPages(route gin.IRouter) {
 		c.Data(200, "image/png", Logopng)
 	})
 
+	route.GET("/lord-icon-2.0.2.js", func(c *gin.Context) {
+		etag := fmt.Sprintf("%x", md5.Sum(Lordicon202js))
+		c.Header("Cache-Control", "public, max-age=31536000")
+		c.Header("ETag", etag)
+		c.Data(200, "text/javascript; charset=utf-8", Lordicon202js)
+	})
+
 	route.GET("/mstile-150x150.png", func(c *gin.Context) {
 		etag := fmt.Sprintf("%x", md5.Sum(Mstile150x150png))
 		c.Header("Cache-Control", "public, max-age=31536000")
@@ -280,24 +287,24 @@ func RouteWebPages(route gin.IRouter) {
 		c.Data(200, "application/manifest+json", Sitewebmanifest)
 	})
 
-	route.GET("/static/js/main.caf8d085.js", func(c *gin.Context) {
-		etag := fmt.Sprintf("%x", md5.Sum(Staticjsmaincaf8d085js))
+	route.GET("/static/js/main.e2f50193.js", func(c *gin.Context) {
+		etag := fmt.Sprintf("%x", md5.Sum(Staticjsmaine2f50193js))
 		c.Header("Cache-Control", "public, max-age=31536000")
 		c.Header("ETag", etag)
-		c.Data(200, "text/javascript; charset=utf-8", Staticjsmaincaf8d085js)
+		c.Data(200, "text/javascript; charset=utf-8", Staticjsmaine2f50193js)
 	})
 
-	route.GET("/static/js/main.caf8d085.js.LICENSE.txt", func(c *gin.Context) {
-		etag := fmt.Sprintf("%x", md5.Sum(Staticjsmaincaf8d085jsLICENSEtxt))
+	route.GET("/static/js/main.e2f50193.js.LICENSE.txt", func(c *gin.Context) {
+		etag := fmt.Sprintf("%x", md5.Sum(Staticjsmaine2f50193jsLICENSEtxt))
 		c.Header("Cache-Control", "public, max-age=31536000")
 		c.Header("ETag", etag)
-		c.Data(200, "text/plain; charset=utf-8", Staticjsmaincaf8d085jsLICENSEtxt)
+		c.Data(200, "text/plain; charset=utf-8", Staticjsmaine2f50193jsLICENSEtxt)
 	})
 
-	route.GET("/static/js/main.caf8d085.js.map", func(c *gin.Context) {
-		etag := fmt.Sprintf("%x", md5.Sum(Staticjsmaincaf8d085jsmap))
+	route.GET("/static/js/main.e2f50193.js.map", func(c *gin.Context) {
+		etag := fmt.Sprintf("%x", md5.Sum(Staticjsmaine2f50193jsmap))
 		c.Header("Cache-Control", "public, max-age=31536000")
 		c.Header("ETag", etag)
-		c.Data(200, "application/json", Staticjsmaincaf8d085jsmap)
+		c.Data(200, "application/json", Staticjsmaine2f50193jsmap)
 	})
 }

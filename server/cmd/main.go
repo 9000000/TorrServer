@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -15,6 +14,7 @@ import (
 	"server/torr/utils"
 
 	"github.com/alexflint/go-arg"
+	"github.com/fsnotify/fsnotify"
 	"github.com/pkg/browser"
 
 	"server"
@@ -26,30 +26,33 @@ import (
 )
 
 type args struct {
-	Port        string `arg:"-p" help:"web server port (default 8090)"`
-	IP          string `arg:"-i" help:"web server addr (default empty)"`
-	Ssl         bool   `help:"enables https"`
-	SslPort     string `help:"web server ssl port, If not set, will be set to default 8091 or taken from db(if stored previously). Accepted if --ssl enabled."`
-	SslCert     string `help:"path to ssl cert file. If not set, will be taken from db(if stored previously) or default self-signed certificate/key will be generated. Accepted if --ssl enabled."`
-	SslKey      string `help:"path to ssl key file. If not set, will be taken from db(if stored previously) or default self-signed certificate/key will be generated. Accepted if --ssl enabled."`
-	Path        string `arg:"-d" help:"database and config dir path"`
-	LogPath     string `arg:"-l" help:"server log file path"`
-	WebLogPath  string `arg:"-w" help:"web access log file path"`
-	RDB         bool   `arg:"-r" help:"start in read-only DB mode"`
-	HttpAuth    bool   `arg:"-a" help:"enable http auth on all requests"`
-	DontKill    bool   `arg:"-k" help:"don't kill server on signal"`
-	UI          bool   `arg:"-u" help:"open torrserver page in browser"`
-	TorrentsDir string `arg:"-t" help:"autoload torrents from dir"`
-	TorrentAddr string `help:"Torrent client address, like 127.0.0.1:1337 (default :PeersListenPort)"`
-	PubIPv4     string `arg:"-4" help:"set public IPv4 addr"`
-	PubIPv6     string `arg:"-6" help:"set public IPv6 addr"`
-	SearchWA    bool   `arg:"-s" help:"search without auth"`
-	MaxSize     string `arg:"-m" help:"max allowed stream size (in Bytes)"`
-	TGToken     string `arg:"-T" help:"telegram bot token"`
-	FusePath    string `arg:"-f" help:"fuse mount path"`
-	WebDAV      bool   `help:"web dav enable"`
-	ProxyURL    string `help:"proxy URL for BitTorrent traffic (http, socks4, socks5, socks5h), e.g. socks5://user:password@127.0.0.1:8080"`
-	ProxyMode   string `help:"proxy mode: tracker (only HTTP trackers, default), peers (only peer connections), or full (all traffic)"`
+	Port        string   `arg:"-p" help:"web server port (default 8090)"`
+	IPs         []string `arg:"-i,--ip,separate" help:"web server bind addr (repeatable; default empty binds all interfaces)"`
+	Ssl         bool     `help:"enables https"`
+	SslPort     string   `help:"web server ssl port, If not set, will be set to default 8091 or taken from db(if stored previously). Accepted if --ssl enabled."`
+	SslCert     string   `help:"path to ssl cert file. If not set, will be taken from db(if stored previously) or default self-signed certificate/key will be generated. Accepted if --ssl enabled."`
+	SslKey      string   `help:"path to ssl key file. If not set, will be taken from db(if stored previously) or default self-signed certificate/key will be generated. Accepted if --ssl enabled."`
+	Path        string   `arg:"-d" help:"database and config dir path"`
+	LogPath     string   `arg:"-l" help:"server log file path"`
+	WebLogPath  string   `arg:"-w" help:"web access log file path"`
+	RDB         bool     `arg:"-r" help:"start in read-only DB mode"`
+	HttpAuth    bool     `arg:"-a" help:"enable http auth on all requests"`
+	DontKill    bool     `arg:"-k" help:"don't kill server on signal"`
+	UI          bool     `arg:"-u" help:"open torrserver page in browser"`
+	TorrentsDir string   `arg:"-t" help:"autoload torrents from dir"`
+	TorrentAddr string   `help:"Torrent client address, like 127.0.0.1:1337 (default :PeersListenPort)"`
+	PubIPv4     string   `arg:"-4" help:"set public IPv4 addr"`
+	PubIPv6     string   `arg:"-6" help:"set public IPv6 addr"`
+	SearchWA    bool     `arg:"-s" help:"search without auth"`
+	MaxSize     string   `arg:"-m" help:"max allowed stream size (in Bytes)"`
+	TGToken     string   `arg:"-T" help:"telegram bot token"`
+	FusePath    string   `arg:"-f" help:"fuse mount path"`
+	WebDAV      bool     `help:"web dav enable"`
+	ProxyURL    string   `help:"proxy URL for BitTorrent traffic (http, socks4, socks5, socks5h), e.g. socks5://user:password@127.0.0.1:8080"`
+	ProxyMode   string   `help:"proxy mode: tracker (only HTTP trackers, default), peers (only peer connections), or full (all traffic)"`
+	ForceHTTPS  bool     `arg:"--force-https" help:"redirect all HTTP requests to HTTPS (requires --ssl)"`
+	HTTPSOnly   bool     `arg:"--https-only" help:"with --ssl, don't open the plain HTTP port (--port): everything is served over HTTPS only. Players and TVs need a trusted certificate"`
+	HTTPMedia   bool     `arg:"--http-media" help:"with --force-https, keep serving media URLs (/stream, /play, playlists) over plain HTTP for players and TVs that can't use HTTPS. Stream URLs and Basic auth credentials then travel unencrypted: use on trusted networks only"`
 }
 
 func (args) Version() string {
@@ -68,15 +71,18 @@ func main() {
 	}
 
 	if params.Port == "" {
-		params.Port = "8090"
+		params.Port = settings.DefaultPort
 	}
 
 	settings.Path = params.Path
 	settings.HttpAuth = params.HttpAuth
 	log.Init(params.LogPath, params.WebLogPath)
 
-	fmt.Println("=========== START ===========")
-	fmt.Println("TorrServer", version.Version+",", runtime.Version()+",", "CPU Num:", runtime.NumCPU())
+	log.TLogln("=========== START ===========")
+	log.TLogln("TorrServer", version.Version+",", runtime.Version()+",", "CPU Num:", runtime.NumCPU())
+	if msg := configureCARoots(); msg != "" {
+		log.TLogln(msg)
+	}
 	if params.HttpAuth {
 		log.TLogln("Use HTTP Auth file", settings.Path+"/accs.db")
 	}
@@ -148,7 +154,7 @@ func main() {
 
 	settings.Args = &settings.ExecArgs{
 		Port:        params.Port,
-		IP:          params.IP,
+		IPs:         params.IPs,
 		Ssl:         params.Ssl,
 		SslPort:     params.SslPort,
 		SslCert:     params.SslCert,
@@ -171,13 +177,36 @@ func main() {
 		WebDAV:      params.WebDAV,
 		ProxyURL:    params.ProxyURL,
 		ProxyMode:   params.ProxyMode,
+		ForceHTTPS:  params.ForceHTTPS,
+		HTTPMedia:   params.HTTPMedia,
+		HTTPSOnly:   params.HTTPSOnly,
 	}
 
 	if params.ProxyURL != "" {
 		log.TLogln("Proxy configured from CLI:", params.ProxyURL, "mode:", settings.Args.ProxyMode)
 	}
 
-	server.Start()
+	if params.ForceHTTPS && !params.Ssl {
+		log.TLogln("Error: --force-https requires --ssl")
+		os.Exit(1)
+	}
+	if params.HTTPSOnly && !params.Ssl {
+		log.TLogln("Error: --https-only requires --ssl")
+		os.Exit(1)
+	}
+	if params.HTTPSOnly && params.HTTPMedia {
+		log.TLogln("Error: --https-only and --http-media can't be combined (--https-only doesn't open the HTTP port)")
+		os.Exit(1)
+	}
+	if params.HTTPMedia && !params.ForceHTTPS {
+		log.TLogln("Error: --http-media requires --force-https (without it, media is already served over HTTP)")
+		os.Exit(1)
+	}
+
+	if err := server.Start(); err != nil {
+		log.TLogln(err)
+		os.Exit(1)
+	}
 	log.TLogln(server.WaitServer())
 	log.Close()
 	time.Sleep(time.Second * 3)
@@ -185,44 +214,88 @@ func main() {
 }
 
 func watchTDir(dir string) {
-	time.Sleep(5 * time.Second)
-	path, err := filepath.Abs(dir)
+	path, err := filepath.Abs(dir) // Attempt to convert the provided dir path into an absolute (full) filesystem path.
 	if err != nil {
 		path = dir
+	} // If an error occurs while obtaining the absolute path, the original relative path is used.
+
+	watcher, err := fsnotify.NewWatcher() // Create a new filesystem watcher (event-based instead of polling).
+	if err != nil {
+		log.TLogln("Error creating watcher:", err)
+		return
 	}
-	for {
-		files, err := os.ReadDir(path)
-		if err == nil {
-			for _, file := range files {
-				filename := filepath.Join(path, file.Name())
-				if strings.ToLower(filepath.Ext(file.Name())) == ".torrent" {
-					sp, err := utils.OpenTorrentFile(filename)
-					if err == nil {
-						tor, err := torr.AddTorrent(sp, "", "", "", "")
-						if err == nil {
-							if tor.GotInfo() {
-								if tor.Title == "" {
-									tor.Title = tor.Name()
-								}
-								torr.SaveTorrentToDB(tor)
-								tor.Drop()
-								os.Remove(filename)
-								time.Sleep(time.Second)
-							} else {
-								log.TLogln("Error get info from torrent")
-							}
-						} else {
-							log.TLogln("Error parse torrent file:", err)
-						}
-					} else {
-						log.TLogln("Error parse file name:", err)
-					}
-				}
+	defer watcher.Close()
+
+	err = watcher.Add(path) // Add target directory to watcher to receive filesystem events.
+	if err != nil {
+		log.TLogln("Error adding directory to watcher:", err)
+		return
+	}
+
+	for { // Start of an infinite loop for continuous background monitoring using filesystem events.
+
+		select {
+		case event, ok := <-watcher.Events:
+			if !ok {
+				return
 			}
-		} else {
-			log.TLogln("Error read dir:", err)
+
+			// Process only file creation or modification events
+			if event.Op&(fsnotify.Create|fsnotify.Write) == 0 {
+				continue
+			}
+
+			func() { // Open an anonymous function to isolate processing context per file.
+				defer func() { // Deferred execution of a safety function that always runs at the end (even in case of panic).
+					if r := recover(); r != nil { // Catch critical runtime errors (panic) during torrent processing.
+						log.TLogln("Recovered from panic in watchTDir:", r) // Log recovered panic to prevent full service crash.
+					}
+				}()
+
+				filename := event.Name                                     // Retrieves the full path of the file directly from the event generated by the watcher.
+				if strings.ToLower(filepath.Ext(filename)) != ".torrent" { // Extract the file extension, convert it to lowercase, and check it. If it is not .torrent, the file is ignored.
+					return // Ends execution of the anonymous function for the current file and moves to the next event.
+				}
+
+				sp, err := utils.OpenTorrentFile(filename) // Parse the torrent file: read Bencode structure and extract metadata.
+				if err != nil {
+					log.TLogln("Error parse file name:", err)
+					return
+				}
+
+				tor, err := torr.AddTorrent(sp, "", "", "", "") // Add parsed torrent specification into active torrent engine.
+				if err != nil {
+					log.TLogln("Error parse torrent file:", err)
+					return
+				}
+
+				if !tor.GotInfo() { // Check whether torrent metadata (info section) is available.
+					log.TLogln("Error get info from torrent") // If metadata is missing, log error and skip processing.
+					return
+				}
+
+				if tor.Title == "" { // If torrent has no custom title, assign default name from metadata.
+					tor.Title = tor.Name()
+				}
+
+				// Long database operation is now safe
+				torr.SaveTorrentToDB(tor) // Save torrent metadata into SQLite database.
+				tor.Drop()                // Free RAM by removing torrent from active memory after processing.
+
+				// Safely remove the original torrent file before writing to database.
+				// This prevents reprocessing in case of repeated filesystem events.
+				if err := os.Remove(filename); err != nil {
+					log.TLogln("Error removing torrent file:", err)
+				}
+			}()
+
+		case err, ok := <-watcher.Errors:
+			if !ok {
+				return
+			}
+			// Log filesystem watcher errors
+			log.TLogln("Watcher error:", err)
 		}
-		time.Sleep(time.Second * 5)
 	}
 }
 
@@ -242,9 +315,9 @@ type DNSConfig struct {
 func DefaultDNSConfig() DNSConfig {
 	return DNSConfig{
 		PrimaryServers: []string{
+			"9.9.9.9:53", // Quad9 DNS
 			"8.8.8.8:53", // Google DNS
 			"1.1.1.1:53", // CloudFlare DNS
-			"9.9.9.9:53", // Quad9 DNS
 		},
 		FallbackServers: []string{
 			"208.67.222.222:53", // OpenDNS
@@ -285,7 +358,6 @@ func (d *DNSChecker) CheckAndResolve() *net.Resolver {
 		log.TLogln("System DNS check passed")
 		return net.DefaultResolver
 	}
-
 	log.TLogln("System DNS check failed, using custom resolver")
 	d.initCustomResolver()
 	return d.customResolver
@@ -293,10 +365,10 @@ func (d *DNSChecker) CheckAndResolve() *net.Resolver {
 
 // testSystemDNS checks if system DNS is working properly
 func (d *DNSChecker) testSystemDNS() bool {
-	_, cancel := context.WithTimeout(context.Background(), d.config.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), d.config.Timeout)
 	defer cancel()
 
-	addrs, err := net.LookupHost("themoviedb.org")
+	addrs, err := net.DefaultResolver.LookupHost(ctx, "themoviedb.org")
 	if err != nil {
 		log.TLogln("DNS lookup error:", err)
 		return false
@@ -327,10 +399,6 @@ func isSuspiciousAddress(addr string) bool {
 		// "10.",       // Private network
 		"192.168.", // Private network
 		"169.254.", // Link-local
-		// "172.16.", "172.17.", "172.18.", "172.19.",
-		// "172.20.", "172.21.", "172.22.", "172.23.",
-		// "172.24.", "172.25.", "172.26.", "172.27.",
-		// "172.28.", "172.29.", "172.30.", "172.31.", // Private network range
 	}
 
 	for _, prefix := range suspiciousPrefixes {
@@ -344,6 +412,14 @@ func isSuspiciousAddress(addr string) bool {
 
 // initCustomResolver creates a custom resolver with fallback support
 func (d *DNSChecker) initCustomResolver() {
+	server := d.pickServer()
+	if server == "" {
+		log.TLogln("No DNS server from the list answered, keeping system resolver")
+		d.customResolver = net.DefaultResolver
+		return
+	}
+	log.TLogln("Using DNS server:", server)
+
 	d.customResolver = &net.Resolver{
 		PreferGo: true, // Use Go's DNS implementation
 		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
@@ -351,27 +427,9 @@ func (d *DNSChecker) initCustomResolver() {
 				Timeout:   d.config.Timeout,
 				KeepAlive: 30 * time.Second,
 			}
-
-			// Try primary servers first
-			for _, dns := range d.config.PrimaryServers {
-				conn, err := dialer.DialContext(ctx, network, dns)
-				if err == nil {
-					return conn, nil
-				}
-				log.TLogln("Failed to connect to DNS server", dns, ":", err)
-			}
-
-			// Try fallback servers if primary fails
-			for _, dns := range d.config.FallbackServers {
-				conn, err := dialer.DialContext(ctx, network, dns)
-				if err == nil {
-					log.TLogln("Using fallback DNS server:", dns)
-					return conn, nil
-				}
-				log.TLogln("Failed to connect to fallback DNS", dns, ":", err)
-			}
-
-			return nil, fmt.Errorf("all DNS servers failed")
+			// UDP dial succeeds even when nobody answers, so the server
+			// is chosen by a real reply in pickServer, not here
+			return dialer.DialContext(ctx, network, server)
 		},
 	}
 
@@ -448,6 +506,9 @@ func dnsResolve() {
 	// Store the resolver for later use if needed
 	net.DefaultResolver = resolver // Optional: replace global resolver
 
+	if !checker.useFallback {
+		return // system DNS has just resolved this name in the check
+	}
 	// Test the resolver
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -460,27 +521,40 @@ func dnsResolve() {
 	}
 }
 
-// func dnsResolve() {
-// 	addrs, err := net.LookupHost("themoviedb.org")
-// 	if len(addrs) == 0 {
-// 		log.TLogln("System DNS check failed", err)
+// pickServer asks all servers at once and returns the first one that really
+// answered with a non-suspicious address, or "" if none did within Timeout
+func (d *DNSChecker) pickServer() string {
+	servers := append(append([]string{}, d.config.PrimaryServers...), d.config.FallbackServers...)
+	ctx, cancel := context.WithTimeout(context.Background(), d.config.Timeout)
+	defer cancel()
 
-// 		fn := func(ctx context.Context, network, address string) (net.Conn, error) {
-// 			d := net.Dialer{}
-// 			return d.DialContext(ctx, "udp", "1.1.1.1:53")
-// 		}
+	answered := make(chan string, len(servers))
+	for _, server := range servers {
+		go func(server string) {
+			r := &net.Resolver{
+				PreferGo: true,
+				Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+					var dialer net.Dialer
+					return dialer.DialContext(ctx, network, server)
+				},
+			}
+			addrs, err := r.LookupHost(ctx, "themoviedb.org")
+			if err != nil || len(addrs) == 0 {
+				return
+			}
+			for _, addr := range addrs {
+				if isSuspiciousAddress(addr) {
+					return
+				}
+			}
+			answered <- server
+		}(server)
+	}
 
-// 		net.DefaultResolver = &net.Resolver{
-// 			Dial: fn,
-// 		}
-
-// 		addrs, err = net.LookupHost("themoviedb.org")
-// 		if err != nil {
-// 			log.TLogln("Check CloudFlare DNS error:", err)
-// 		} else {
-// 			log.TLogln("Use CloudFlare DNS")
-// 		}
-// 	} else {
-// 		log.TLogln("System DNS check passed")
-// 	}
-// }
+	select {
+	case server := <-answered:
+		return server
+	case <-ctx.Done():
+		return ""
+	}
+}

@@ -112,17 +112,20 @@ var Indexhtml []byte
 //go:embed pages/logo.png
 var Logopng []byte
 
+//go:embed pages/lord-icon-2.0.2.js
+var Lordicon202js []byte
+
 //go:embed pages/mstile-150x150.png
 var Mstile150x150png []byte
 
 //go:embed pages/site.webmanifest
 var Sitewebmanifest []byte
 
-//go:embed pages/static/js/main.caf8d085.js
-var Staticjsmaincaf8d085js []byte
+//go:embed pages/static/js/main.e2f50193.js
+var Staticjsmaine2f50193js []byte
 
-//go:embed pages/static/js/main.caf8d085.js.LICENSE.txt
-var Staticjsmaincaf8d085jsLICENSEtxt []byte
+//go:embed pages/static/js/main.e2f50193.js.LICENSE.txt
+var Staticjsmaine2f50193jsLICENSEtxt []byte
 
-//go:embed pages/static/js/main.caf8d085.js.map
-var Staticjsmaincaf8d085jsmap []byte
+//go:embed pages/static/js/main.e2f50193.js.map
+var Staticjsmaine2f50193jsmap []byte

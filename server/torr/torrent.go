@@ -4,12 +4,13 @@ import (
 	"errors"
 	"path/filepath"
 	"regexp"
-	"server/torrshash"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"server/torrshash"
 
 	utils2 "server/utils"
 
@@ -68,6 +69,10 @@ func NewTorrent(spec *torrent.TorrentSpec, bt *BTServer) (*Torrent, error) {
 	if bt == nil || bt.client == nil {
 		return nil, errors.New("BT client not connected")
 	}
+
+	// Auto-save trackers from the source (magnet or .torrent file)
+	utils.SaveUniqueTrackers(spec.Trackers)
+
 	switch settings.BTsets.RetrackersMode {
 	case 1:
 		spec.Trackers = append(spec.Trackers, [][]string{utils.GetDefTrackers()}...)
@@ -82,7 +87,22 @@ func NewTorrent(spec *torrent.TorrentSpec, bt *BTServer) (*Torrent, error) {
 		spec.Trackers = append(spec.Trackers, [][]string{trackers}...)
 	}
 
+	if len(spec.InfoBytes) == 0 {
+		if db := GetTorrentDB(spec.InfoHash); db != nil && db.TorrentSpec != nil {
+			spec.InfoBytes = db.TorrentSpec.InfoBytes
+		}
+	}
+
+	// The read lock is taken and released explicitly, NOT with defer: the code below
+	// takes bt.mu.Lock() for the torrents map, and sync.RWMutex is not reentrant,
+	// so holding an RLock across that would self-deadlock.
+	bt.mu.RLock()
+	if bt.client == nil {
+		bt.mu.RUnlock()
+		return nil, errors.New("BT client not connected")
+	}
 	goTorrent, _, err := bt.client.AddTorrentSpec(spec)
+	bt.mu.RUnlock()
 	if err != nil {
 		return nil, err
 	}
@@ -125,9 +145,26 @@ func (t *Torrent) WaitInfo() bool {
 
 	select {
 	case <-t.Torrent.GotInfo():
-		if t.bt != nil && t.bt.storage != nil {
-			t.cache = t.bt.storage.GetCache(t.Hash())
-			t.cache.SetTorrent(t.Torrent)
+		if t.TorrentSpec != nil && len(t.TorrentSpec.InfoBytes) == 0 {
+			t.TorrentSpec.InfoBytes = t.Torrent.Metainfo().InfoBytes
+		}
+		if t.bt != nil {
+			// bt.storage is replaced by Connect under bt.mu; snapshot it under the
+			// lock and use the snapshot afterwards, because the storage object keeps
+			// its own locking and is never closed. Reading the field unlocked was
+			// reported by -race and can tear the interface value.
+			t.bt.mu.RLock()
+			storage := t.bt.storage
+			t.bt.mu.RUnlock()
+			if storage != nil {
+				cache := storage.GetCache(t.Hash())
+				if cache == nil {
+					// torrent was dropped while waiting for info: CloseHash already removed the cache
+					return false
+				}
+				t.cache = cache
+				cache.SetTorrent(t.Torrent)
+			}
 		}
 		return true
 	case <-t.closed:
@@ -215,20 +252,39 @@ func (t *Torrent) progressEvent() {
 }
 
 func (t *Torrent) updateRA() {
-	// t.muTorrent.Lock()
-	// defer t.muTorrent.Unlock()
-	// if t.Torrent != nil && t.Torrent.Info() != nil {
-	// 	pieceLen := t.Torrent.Info().PieceLength
-	// 	adj := pieceLen * int64(t.Torrent.Stats().ActivePeers) / int64(1+t.cache.Readers())
-	// 	switch {
-	// 	case adj < pieceLen:
-	// 		adj = pieceLen
-	// 	case adj > pieceLen*4:
-	// 		adj = pieceLen * 4
-	// 	}
-	// 	go t.cache.AdjustRA(adj)
-	// }
-	adj := int64(16 << 20) // 16 MB fixed RA
+	if t.cache == nil {
+		return
+	}
+	// OPT-3 fix: adaptive readahead based on cache capacity and reader count
+	readers := t.cache.Readers()
+	if readers == 0 {
+		readers = 1
+	}
+	capacity := t.cache.GetCapacity()
+	// Allocate readahead proportionally: each reader gets a share of cache capacity
+	adj := capacity / int64(readers)
+
+	// Clamp to reasonable bounds using piece length
+	t.muTorrent.Lock()
+	if t.Torrent != nil && t.Torrent.Info() != nil {
+		pieceLen := t.Torrent.Info().PieceLength
+		if adj < pieceLen*2 {
+			adj = pieceLen * 2
+		}
+		if adj > pieceLen*8 {
+			adj = pieceLen * 8
+		}
+	} else {
+		// Fallback when no torrent info yet
+		if adj < 4<<20 { // min 4 MB
+			adj = 4 << 20
+		}
+		if adj > 16<<20 { // max 16 MB
+			adj = 16 << 20
+		}
+	}
+	t.muTorrent.Unlock()
+
 	go t.cache.AdjustRA(adj)
 }
 
@@ -300,6 +356,9 @@ func (t *Torrent) Close() bool {
 	if t == nil {
 		return false
 	}
+	if t.Stat == state.TorrentClosed {
+		return true
+	}
 	if settings.ReadOnly && t.cache != nil && t.cache.GetUseReaders() > 0 {
 		return false
 	}
@@ -307,7 +366,9 @@ func (t *Torrent) Close() bool {
 
 	if t.bt != nil {
 		t.bt.mu.Lock()
-		delete(t.bt.torrents, t.Hash())
+		if _, ok := t.bt.torrents[t.Hash()]; ok {
+			delete(t.bt.torrents, t.Hash())
+		}
 		t.bt.mu.Unlock()
 	}
 
@@ -438,18 +499,51 @@ func (t *Torrent) Status() *state.TorrentStatus {
 			// Exclude "anime" to keep default indexing as requested
 			catLower := strings.ToLower(st.Category)
 			if strings.Contains(catLower, "tv") && !strings.Contains(catLower, "anime") {
-				// Priority 1: "Season...Episode" structure (Folder/File) - e.g. "Season 12/Episode 01.mkv"
+				// Full matches
 				reSeasonEp := regexp.MustCompile(`(?i)Season\W*(\d+).*\WEpisode\W*(\d+)`)
-
-				// Priority 2: Standard S...E... (e.g. S12E01)
 				reSE := regexp.MustCompile(`(?i)\bS(\d+)(?:[^0-9E]+)?E(\d+)\b`)
-
-				// Priority 3: X notation (e.g. 12x01)
 				reX := regexp.MustCompile(`(?i)\b(\d+)x(\d+)\b`)
 
-				parseID := func(s string) int {
-					// Try Season/Episode full words first (often in folder names)
-					matches := reSeasonEp.FindStringSubmatch(s)
+				// Season extractors
+				reSeasonGen := regexp.MustCompile(`(?i)\bS(?:eason)?\W*(\d+)`)
+				reSeasonRU := regexp.MustCompile(`(?i)Сезон\W*(\d+)\b`)
+				reSeasonReverse := regexp.MustCompile(`(?i)(\d+)\W*(?:-[йяе]?\s+)?(?:Сезон|Season)`)
+
+				// Episode extractors
+				reEpGen := regexp.MustCompile(`(?i)\bE(?:p|pisode)?\W*(\d+)\b`)
+				reEpLeading := regexp.MustCompile(`^\s*(\d+)`)
+
+				extractSeason := func(s string) int {
+					if m := reSeasonGen.FindStringSubmatch(s); len(m) == 2 {
+						n, _ := strconv.Atoi(m[1])
+						return n
+					}
+					if m := reSeasonReverse.FindStringSubmatch(s); len(m) == 2 {
+						n, _ := strconv.Atoi(m[1])
+						return n
+					}
+					if m := reSeasonRU.FindStringSubmatch(s); len(m) == 2 {
+						n, _ := strconv.Atoi(m[1])
+						return n
+					}
+					return 0
+				}
+
+				extractEpisode := func(s string) int {
+					if m := reEpGen.FindStringSubmatch(s); len(m) == 2 {
+						n, _ := strconv.Atoi(m[1])
+						return n
+					}
+					if m := reEpLeading.FindStringSubmatch(s); len(m) == 2 {
+						n, _ := strconv.Atoi(m[1])
+						return n
+					}
+					return 0
+				}
+
+				parseID := func(inputStr string) int {
+					// 1. Try Full Path Pattern
+					matches := reSeasonEp.FindStringSubmatch(inputStr)
 					if len(matches) == 3 {
 						season, _ := strconv.Atoi(matches[1])
 						episode, _ := strconv.Atoi(matches[2])
@@ -458,8 +552,7 @@ func (t *Torrent) Status() *state.TorrentStatus {
 						}
 					}
 
-					// Try S...E...
-					matches = reSE.FindStringSubmatch(s)
+					matches = reSE.FindStringSubmatch(inputStr)
 					if len(matches) == 3 {
 						season, _ := strconv.Atoi(matches[1])
 						episode, _ := strconv.Atoi(matches[2])
@@ -468,13 +561,35 @@ func (t *Torrent) Status() *state.TorrentStatus {
 						}
 					}
 
-					// Try 12x01
-					matches = reX.FindStringSubmatch(s)
+					matches = reX.FindStringSubmatch(inputStr)
 					if len(matches) == 3 {
 						season, _ := strconv.Atoi(matches[1])
 						episode, _ := strconv.Atoi(matches[2])
 						if season > 0 && episode > 0 {
 							return season*100 + episode
+						}
+					}
+
+					// 2. Split Component-based Strategy
+					// Assumes inputStr could be a full path or just a filename/title
+					dir := filepath.Dir(inputStr)
+					base := filepath.Base(inputStr)
+
+					ep := extractEpisode(base)
+					if ep > 0 {
+						// Look for Season context
+						// Try Directory Path
+						season := extractSeason(dir)
+						if season == 0 {
+							// Try Category
+							season = extractSeason(st.Category)
+						}
+						if season == 0 {
+							// Try Torrent Title
+							season = extractSeason(t.Title)
+						}
+						if season > 0 {
+							return season*100 + ep
 						}
 					}
 
@@ -601,9 +716,5 @@ func (t *Torrent) CacheState() *cacheSt.CacheState {
 		st.Torrent = t.Status()
 		return st
 	}
-	// Return status even without cache (e.g. during GotInfo phase)
-	// so frontend can get file_stats as soon as info is available
-	st := &cacheSt.CacheState{}
-	st.Torrent = t.Status()
-	return st
+	return nil
 }
