@@ -2,7 +2,7 @@
 # Build TorrServerKit.xcframework for iOS (macOS + Xcode required).
 # Usage:
 #   ./build-ios.sh
-#   VERSION=MatriX.146.1 ./build-ios.sh
+#   VERSION=MatriX.146.2 ./build-ios.sh
 
 set -euo pipefail
 
