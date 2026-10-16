@@ -9,7 +9,7 @@
 }:
 pkgs.stdenv.mkDerivation rec {
   pname = "torrserver";
-  version = "MatriX.146.3";
+  version = "MatriX.146.4";
 
   src = pkgs.fetchgit {
     url = "https://github.com/YouROK/TorrServer.git";
