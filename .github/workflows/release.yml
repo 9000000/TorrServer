@@ -160,7 +160,7 @@ jobs:
           export ANDROID_NDK_HOME="${ANDROID_HOME}/ndk/${NDK_VERSION}"
           echo "ANDROID_NDK_HOME=${ANDROID_NDK_HOME}" >> $GITHUB_ENV
           echo "NDK installed at: ${ANDROID_NDK_HOME}"
-          ls -la "${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/" 2>/dev/null | head -10
+          ls -la "${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/" | head -10
 
       - name: Build
         run: ./build-all.sh
